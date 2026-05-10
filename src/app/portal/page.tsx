@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StatusBadge, PriorityBadge } from "@/components/StatusBadge";
 import type { SessionUser } from "@/lib/session";
+
+interface Reply {
+  id: number; body: string; isInternal: boolean; createdAt: string;
+  user: { name: string; color: string } | null;
+}
 
 interface Ticket {
   id: number; subject: string; body: string; status: string; priority: string;
@@ -13,6 +18,88 @@ interface Ticket {
 const CATEGORIES = ["Genel", "Teknik Destek", "Fatura", "Öneri", "Şikayet"];
 const PRIORITIES = ["Normal", "Yüksek", "Kritik"];
 
+function ReplyThread({ ticketId, onClose }: { ticketId: number; onClose: () => void }) {
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/tickets/${ticketId}/replies`).then(r => r.json());
+    setReplies(Array.isArray(res) ? res.filter((r: Reply) => !r.isInternal) : []);
+  }, [ticketId]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [replies]);
+
+  const send = async () => {
+    if (!text.trim()) return;
+    setSending(true);
+    await fetch(`/api/tickets/${ticketId}/replies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: text.trim(), isInternal: false }),
+    });
+    setText("");
+    setSending(false);
+    load();
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-gray-800">
+      {/* Yanıt dizisi */}
+      <div className="space-y-3 max-h-64 overflow-y-auto pr-1 mb-4">
+        {replies.length === 0 && (
+          <p className="text-xs text-slate-400 dark:text-gray-600 text-center py-4">Henüz yanıt yok</p>
+        )}
+        {replies.map(r => {
+          const isAgent = !!r.user;
+          return (
+            <div key={r.id} className={`flex ${isAgent ? "justify-start" : "justify-end"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                isAgent
+                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-slate-800 dark:text-gray-100 rounded-tl-sm"
+                  : "bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-gray-100 rounded-tr-sm"
+              }`}>
+                {isAgent && (
+                  <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 mb-1">{r.user!.name}</p>
+                )}
+                <p className="whitespace-pre-wrap">{r.body}</p>
+                <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-1 text-right">
+                  {new Date(r.createdAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Yanıt formu */}
+      <div className="flex gap-2">
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send(); }}
+          rows={2}
+          placeholder="Yanıtınızı yazın... (Ctrl+Enter ile gönder)"
+          className="flex-1 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-none"
+        />
+        <div className="flex flex-col gap-1.5">
+          <button onClick={send} disabled={sending || !text.trim()}
+            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition-colors">
+            {sending ? "..." : "Gönder"}
+          </button>
+          <button onClick={onClose}
+            className="px-3 py-2 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-slate-500 dark:text-gray-400 text-xs rounded-xl transition-colors">
+            Kapat
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PortalPage() {
   const [me, setMe]           = useState<SessionUser | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -20,6 +107,7 @@ export default function PortalPage() {
   const [form, setForm]         = useState({ subject: "", body: "", category: "Genel", priority: "Normal" });
   const [saving, setSaving]     = useState(false);
   const [filter, setFilter]     = useState("Tümü");
+  const [openTicketId, setOpenTicketId] = useState<number | null>(null);
 
   const fetchAll = useCallback(async () => {
     const [meRes, tRes] = await Promise.all([
@@ -39,7 +127,7 @@ export default function PortalPage() {
     await fetch("/api/tickets/webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, fromEmail: me.email, fromName: me.name }),
+      body: JSON.stringify({ ...form, fromEmail: me.email, fromName: me.name, source: "portal" }),
     });
     setSaving(false);
     setCreating(false);
@@ -79,8 +167,8 @@ export default function PortalPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Toplam", val: tickets.length,                                  color: "text-indigo-600 dark:text-indigo-400" },
-            { label: "Açık",   val: open,                                            color: "text-amber-600 dark:text-amber-400" },
+            { label: "Toplam", val: tickets.length,                                    color: "text-indigo-600 dark:text-indigo-400" },
+            { label: "Açık",   val: open,                                              color: "text-amber-600 dark:text-amber-400" },
             { label: "Kapalı", val: tickets.filter(t => t.status === "Kapalı").length, color: "text-slate-500 dark:text-gray-400" },
           ].map(({ label, val, color }) => (
             <div key={label} className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-none text-center">
@@ -133,10 +221,22 @@ export default function PortalPage() {
                 ) : (
                   <span className="text-xs text-slate-400 dark:text-gray-600">Ekip incelemede</span>
                 )}
-                <span className="text-xs text-slate-400 dark:text-gray-600 whitespace-nowrap shrink-0">
-                  {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-slate-400 dark:text-gray-600">
+                    {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <button
+                    onClick={() => setOpenTicketId(openTicketId === t.id ? null : t.id)}
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    {openTicketId === t.id ? "Kapat" : "Yanıtlar"}
+                  </button>
+                </div>
               </div>
+
+              {/* Yanıt paneli */}
+              {openTicketId === t.id && (
+                <ReplyThread ticketId={t.id} onClose={() => setOpenTicketId(null)} />
+              )}
             </div>
           ))}
         </div>

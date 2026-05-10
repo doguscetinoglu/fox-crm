@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { sendTelegramMessage, replyMessage } from "@/lib/telegram";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -30,11 +31,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: { user: { select: { name: true, color: true } } },
   });
 
+  // Ticket status güncelle + Telegram bildirimi
   if (session.type !== "customer") {
-    await prisma.ticket.update({
+    const ticket = await prisma.ticket.update({
       where: { id: ticketId },
       data: { status: isInternal ? undefined : "Yanıtlandı" },
     });
+
+    // Dahili not değilse ve Telegram'dan geldiyse bildirim gönder
+    if (!isInternal && ticket.telegramChatId) {
+      const senderName = reply.user?.name ?? "Destek Ekibi";
+      await sendTelegramMessage(
+        ticket.telegramChatId,
+        replyMessage(ticket.id, ticket.subject, senderName, body.trim())
+      );
+    }
   }
 
   return NextResponse.json(reply, { status: 201 });

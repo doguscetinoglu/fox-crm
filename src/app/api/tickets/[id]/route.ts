@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramMessage, statusMessage } from "@/lib/telegram";
 
 export async function PATCH(
   req: NextRequest,
@@ -9,6 +10,13 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
     const { status, assigneeId, customerId, category, priority } = body;
+
+    // Durum değişikliği için eski durumu al
+    let oldStatus: string | undefined;
+    if (status !== undefined) {
+      const current = await prisma.ticket.findUnique({ where: { id: Number(id) }, select: { status: true } });
+      oldStatus = current?.status;
+    }
 
     const ticket = await prisma.ticket.update({
       where: { id: Number(id) },
@@ -21,6 +29,14 @@ export async function PATCH(
       },
       include: { assignee: true, customer: true },
     });
+
+    // Durum değiştiyse ve Telegram'dan geldiyse bildirim gönder
+    if (status !== undefined && oldStatus !== status && ticket.telegramChatId) {
+      await sendTelegramMessage(
+        ticket.telegramChatId,
+        statusMessage(ticket.id, ticket.subject, oldStatus!, status)
+      );
+    }
 
     return NextResponse.json(ticket);
   } catch (err) {

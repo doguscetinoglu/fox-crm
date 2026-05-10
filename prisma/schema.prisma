@@ -51,10 +51,13 @@ model Ticket {
   assignee   User?         @relation(fields: [assigneeId], references: [id])
   customerId Int?
   customer   Customer?     @relation(fields: [customerId], references: [id])
-  priority   String        @default("Normal")
-  receivedAt DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  replies    TicketReply[]
+  priority          String        @default("Normal")
+  source            String?       @default("web")
+  telegramChatId    String?
+  telegramMessageId Int?          @unique
+  receivedAt        DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  replies           TicketReply[]
 
   @@map("tickets")
 }

@@ -115,6 +115,9 @@ export const TicketScalarFieldEnum = {
   assigneeId: 'assigneeId',
   customerId: 'customerId',
   priority: 'priority',
+  source: 'source',
+  telegramChatId: 'telegramChatId',
+  telegramMessageId: 'telegramMessageId',
   receivedAt: 'receivedAt',
   updatedAt: 'updatedAt'
 } as const

@@ -1,16 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import Anthropic from "@anthropic-ai/sdk";
+import { sendTelegramMessage } from "@/lib/telegram";
+
+const CATEGORIES = ["Genel", "Teknik Destek", "Fatura", "Öneri", "Şikayet"];
+const PRIORITIES = ["Normal", "Yüksek", "Kritik"];
+
+async function aiClassify(subject: string, body: string): Promise<{ category: string; priority: string }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return { category: "Genel", priority: "Normal" };
+  try {
+    const client = new Anthropic({ apiKey });
+    const msg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 80,
+      messages: [{
+        role: "user",
+        content: `Aşağıdaki destek talebini analiz et ve yalnızca JSON formatında yanıt ver.
+Kategori (birini seç): Genel, Teknik Destek, Fatura, Öneri, Şikayet
+Öncelik (birini seç): Normal, Yüksek, Kritik
+
+Konu: ${subject}
+Mesaj: ${body.substring(0, 500)}
+
+{"category":"...","priority":"..."}`,
+      }],
+    });
+    const text = (msg.content[0] as { type: string; text: string }).text.trim();
+    const jsonMatch = text.match(/\{[^}]+\}/);
+    if (!jsonMatch) return { category: "Genel", priority: "Normal" };
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      category: CATEGORIES.includes(parsed.category) ? parsed.category : "Genel",
+      priority: PRIORITIES.includes(parsed.priority) ? parsed.priority : "Normal",
+    };
+  } catch {
+    return { category: "Genel", priority: "Normal" };
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subject, body: emailBody, fromEmail, fromName, category, priority, assigneeId } = body;
+    const {
+      subject, body: emailBody, fromEmail, fromName,
+      category: rawCategory, priority: rawPriority, assigneeId,
+      source, telegramChatId, telegramMessageId,
+    } = body;
 
     if (!subject || !fromEmail) {
       return NextResponse.json({ error: "subject ve fromEmail zorunludur" }, { status: 400 });
     }
 
-    // Gönderen email'e göre müşteriyi bul ya da otomatik oluştur
+    // Telegram duplicate kontrolü
+    if (telegramMessageId) {
+      const existing = await prisma.ticket.findUnique({ where: { telegramMessageId: Number(telegramMessageId) } });
+      if (existing) {
+        return NextResponse.json({ success: true, ticket: existing, duplicate: true }, { status: 200 });
+      }
+    }
+
+    // AI kategorilendirme (sadece category/priority gönderilmemişse)
+    let category = rawCategory;
+    let priority = rawPriority;
+    if (!category || !priority) {
+      const ai = await aiClassify(subject, emailBody ?? "");
+      category = category ?? ai.category;
+      priority = priority ?? ai.priority;
+    }
+
+    // Müşteriyi bul veya oluştur
     const customer = await prisma.customer.upsert({
       where: { email: fromEmail },
       update: {},
@@ -23,14 +82,25 @@ export async function POST(req: NextRequest) {
         body: emailBody ?? "",
         fromEmail,
         fromName: fromName ?? null,
-        category: category ?? "Genel",
+        category,
         status: "Yeni",
         assigneeId: assigneeId ? Number(assigneeId) : null,
         customerId: customer.id,
-        priority: priority ?? "Normal",
+        priority,
+        source: source ?? "web",
+        telegramChatId: telegramChatId ? String(telegramChatId) : null,
+        telegramMessageId: telegramMessageId ? Number(telegramMessageId) : null,
       },
       include: { assignee: true, customer: true },
     });
+
+    // Telegram'a "alındı" bildirimi
+    if (telegramChatId) {
+      await sendTelegramMessage(
+        String(telegramChatId),
+        `✅ Destek talebiniz alındı!\n\n🎫 Ticket #${ticket.id}\n📌 ${subject}\n🏷️ ${category} · ${priority}\n\nEkibimiz en kısa sürede dönüş yapacak.`
+      );
+    }
 
     return NextResponse.json({ success: true, ticket }, { status: 201 });
   } catch (err) {
