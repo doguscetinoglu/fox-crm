@@ -80,58 +80,58 @@ export default function KullanicilarPage() {
   const COLOR_BG: Record<string, string> = { blue: "bg-blue-600", purple: "bg-purple-600", green: "bg-emerald-600", pink: "bg-pink-600", orange: "bg-orange-500", indigo: "bg-indigo-600", teal: "bg-teal-600" };
 
   return (
-    <div className="p-7 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-7 space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-100">Kullanıcılar</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-100">Kullanıcılar</h1>
           <p className="text-sm text-gray-500 mt-0.5">{users.length} kullanıcı · {users.filter(u => u.isActive).length} aktif</p>
         </div>
         {isAdmin && (
           <button onClick={() => setAdding(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors">
-            + Yeni Kullanıcı
+            className="px-3 py-2 md:px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors whitespace-nowrap">
+            + Ekle
           </button>
         )}
       </div>
 
       {/* Özet */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
         {[
           { label: "Toplam", val: users.length },
           { label: "Aktif", val: users.filter(u => u.isActive).length },
           { label: "Admin", val: users.filter(u => u.isAdmin).length },
           { label: "Toplam Ticket", val: users.reduce((s, u) => s + u._count.tickets, 0) },
         ].map(({ label, val }) => (
-          <div key={label} className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+          <div key={label} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
             <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
-            <p className="text-3xl font-bold text-gray-100 mt-1">{val}</p>
+            <p className="text-2xl md:text-3xl font-bold text-gray-100 mt-1">{val}</p>
           </div>
         ))}
       </div>
 
       {/* Kullanıcı kartları */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {users.map(u => {
           const pct = Math.round((u._count.tickets / maxTickets) * 100);
           const isSel = selected === u.id;
           return (
             <div key={u.id}
-              className={`bg-gray-900 border rounded-2xl p-5 transition-all ${isSel ? "border-indigo-600 ring-1 ring-indigo-600/40" : "border-gray-800 hover:border-gray-700"}`}>
+              className={`bg-gray-900 border rounded-2xl p-4 md:p-5 transition-all ${isSel ? "border-indigo-600 ring-1 ring-indigo-600/40" : "border-gray-800 hover:border-gray-700"}`}>
               <div className="flex items-start justify-between gap-2 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative shrink-0">
                     <UserAvatar name={u.name} color={u.color} size="lg" />
                     {!u.isActive && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-900" />}
                     {u.isAdmin && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-500 rounded-full border-2 border-gray-900 flex items-center justify-center text-white text-[7px]">A</span>}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-gray-100 text-sm">{u.name}</p>
                     <p className="text-xs text-gray-500">{u.role}</p>
-                    <p className="text-xs text-gray-600">{u.email}</p>
+                    <p className="text-xs text-gray-600 truncate">{u.email}</p>
                   </div>
                 </div>
                 {isAdmin && (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <button onClick={() => { setEditing(u); setForm({ name: u.name, email: u.email, password: "", role: u.role, color: u.color, isAdmin: u.isAdmin }); }}
                       className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors text-xs">✏️</button>
                     <button onClick={() => setResetPw({ id: u.id, name: u.name })}
@@ -176,12 +176,33 @@ export default function KullanicilarPage() {
       {/* Seçili kullanıcı ticketları */}
       {selected && tickets.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-800">
+          <div className="px-4 md:px-5 py-4 border-b border-gray-800">
             <p className="text-sm font-semibold text-gray-200">
               {users.find(u => u.id === selected)?.name} — Ticket Listesi ({tickets.length})
             </p>
           </div>
-          <table className="w-full text-sm">
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-gray-800/60">
+            {tickets.map(t => (
+              <div key={t.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-gray-200 text-sm font-medium leading-snug">{t.subject}</p>
+                    <p className="text-xs text-gray-600">#{t.id} · {t.category}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <StatusBadge status={t.status} />
+                    <PriorityBadge priority={t.priority} />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600">
+                  {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <table className="hidden md:table w-full text-sm">
             <thead><tr className="border-b border-gray-800">
               {["#", "Konu", "Kategori", "Durum", "Öncelik", "Tarih"].map(h => (
                 <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
@@ -205,10 +226,10 @@ export default function KullanicilarPage() {
         </div>
       )}
 
-      {/* Yeni Kullanıcı Modal */}
+      {/* Yeni / Düzenle Modal */}
       {(adding || editing) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setAdding(false); setEditing(null); setError(""); }}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => { setAdding(false); setEditing(null); setError(""); }}>
+          <div className="bg-gray-900 border border-gray-800 rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-base font-bold text-gray-100 mb-5">{editing ? "Kullanıcı Düzenle" : "Yeni Kullanıcı Ekle"}</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -246,7 +267,6 @@ export default function KullanicilarPage() {
                 </div>
               </div>
 
-              {/* Renk önizleme */}
               <div className="flex items-center gap-2 pt-1">
                 <UserAvatar name={form.name || "?"} color={form.color} size="md" />
                 <div>
@@ -284,8 +304,8 @@ export default function KullanicilarPage() {
 
       {/* Şifre sıfırlama modal */}
       {resetPw && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setResetPw(null)}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setResetPw(null)}>
+          <div className="bg-gray-900 border border-gray-800 rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-base font-bold text-gray-100 mb-1">Şifre Sıfırla</h2>
             <p className="text-sm text-gray-500 mb-5">{resetPw.name} için yeni şifre belirleyin</p>
             <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Yeni şifre"

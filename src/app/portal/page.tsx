@@ -57,18 +57,18 @@ export default function PortalPage() {
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">T</div>
-            <div>
+      <header className="bg-gray-900 border-b border-gray-800 px-4 md:px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0">T</div>
+            <div className="min-w-0">
               <p className="font-semibold text-gray-100 text-sm">Müşteri Portalı</p>
-              {me && <p className="text-xs text-gray-500">{me.name}</p>}
+              {me && <p className="text-xs text-gray-500 truncate">{me.name}</p>}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setCreating(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors">
+              className="px-3 py-2 md:px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-xs md:text-sm font-semibold rounded-xl transition-colors">
               + Yeni Talep
             </button>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}
@@ -79,23 +79,23 @@ export default function PortalPage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-4 md:space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           {[
             { label: "Toplam Talep", val: tickets.length, color: "text-indigo-400" },
             { label: "Açık", val: open, color: "text-orange-400" },
             { label: "Kapalı", val: tickets.filter(t => t.status === "Kapalı").length, color: "text-gray-400" },
           ].map(({ label, val, color }) => (
-            <div key={label} className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
-              <p className={`text-3xl font-bold mt-1 ${color}`}>{val}</p>
+            <div key={label} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+              <p className="text-xs text-gray-500 uppercase tracking-wider leading-tight">{label}</p>
+              <p className={`text-2xl md:text-3xl font-bold mt-1 ${color}`}>{val}</p>
             </div>
           ))}
         </div>
 
         {/* Filtreler */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-1.5 md:gap-2">
           {["Tümü", "Yeni", "İnceleniyor", "Yanıtlandı", "Kapalı"].map(s => (
             <button key={s} onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${filter === s ? "bg-indigo-600 text-white" : "bg-gray-900 border border-gray-800 text-gray-400 hover:border-gray-600"}`}>
@@ -113,14 +113,14 @@ export default function PortalPage() {
               <p className="text-sm mt-1">Yeni bir destek talebi oluşturabilirsiniz</p>
             </div>
           ) : filtered.map(t => (
-            <div key={t.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <div key={t.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-xs text-gray-600 font-mono">#{t.id}</span>
                     <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-md">{t.category}</span>
                   </div>
-                  <p className="font-semibold text-gray-100">{t.subject}</p>
+                  <p className="font-semibold text-gray-100 text-sm md:text-base">{t.subject}</p>
                   {t.body && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{t.body}</p>}
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
@@ -128,18 +128,18 @@ export default function PortalPage() {
                   <PriorityBadge priority={t.priority} />
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-800">
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-800 gap-2">
                 {t.assignee ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                       {t.assignee.name[0]}
                     </div>
-                    <span className="text-xs text-gray-500">{t.assignee.name} inceliyor</span>
+                    <span className="text-xs text-gray-500 truncate">{t.assignee.name} inceliyor</span>
                   </div>
                 ) : (
                   <span className="text-xs text-gray-600">Ekip incelemede</span>
                 )}
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-gray-600 whitespace-nowrap shrink-0">
                   {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
@@ -150,8 +150,8 @@ export default function PortalPage() {
 
       {/* Yeni talep modal */}
       {creating && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setCreating(false)}>
+          <div className="bg-gray-900 border border-gray-800 rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-base font-bold text-gray-100 mb-5">Yeni Destek Talebi</h2>
             <form onSubmit={submit} className="space-y-4">
               <div>

@@ -46,32 +46,32 @@ export default function MusterilerPage() {
   const withTickets = customers.filter(c => c._count.tickets > 0).length;
 
   return (
-    <div className="p-7 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-7 space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-100">Müşteriler</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-100">Müşteriler</h1>
           <p className="text-sm text-gray-500 mt-0.5">{customers.length} kayıtlı müşteri · {total} toplam ticket</p>
         </div>
         <button onClick={() => setAdding(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors">
-          + Müşteri Ekle
+          className="px-3 py-2 md:px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors whitespace-nowrap">
+          + Ekle
         </button>
       </div>
 
       {/* Özet */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Toplam Müşteri</p>
-          <p className="text-3xl font-bold text-gray-100 mt-1">{customers.length}</p>
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Toplam</p>
+          <p className="text-2xl md:text-3xl font-bold text-gray-100 mt-1">{customers.length}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Ticket Göndermis</p>
-          <p className="text-3xl font-bold text-gray-100 mt-1">{withTickets}</p>
-          <p className="text-xs text-gray-600 mt-1">en az 1 ticket</p>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Ticketlı</p>
+          <p className="text-2xl md:text-3xl font-bold text-gray-100 mt-1">{withTickets}</p>
+          <p className="hidden md:block text-xs text-gray-600 mt-1">en az 1 ticket</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Ort. Ticket/Müşteri</p>
-          <p className="text-3xl font-bold text-gray-100 mt-1">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Ort. Ticket</p>
+          <p className="text-2xl md:text-3xl font-bold text-gray-100 mt-1">
             {customers.length > 0 ? (total / customers.length).toFixed(1) : "—"}
           </p>
         </div>
@@ -85,8 +85,49 @@ export default function MusterilerPage() {
         className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-600"
       />
 
-      {/* Liste */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl py-16 text-center text-gray-600">Müşteri bulunamadı</div>
+        )}
+        {filtered.map(c => (
+          <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 hover:border-gray-700 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  {(c.name || c.email)[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-200 text-sm">{c.name || <span className="text-gray-500 italic">İsimsiz</span>}</p>
+                  <p className="text-xs text-gray-500 truncate">{c.email}</p>
+                  {c.company && <p className="text-xs text-gray-600 truncate">{c.company}</p>}
+                </div>
+              </div>
+              <Link href={`/musteriler/${c.id}`}
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors whitespace-nowrap shrink-0">
+                Detay →
+              </Link>
+            </div>
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-800">
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg font-bold text-indigo-400">{c._count.tickets}</span>
+                <span className="text-xs text-gray-500">ticket</span>
+              </div>
+              {c.openTickets > 0 && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded bg-orange-500/20 text-orange-300">
+                  {c.openTickets} açık
+                </span>
+              )}
+              <span className="text-xs text-gray-600 ml-auto">
+                {new Date(c.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric" })}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-800">
@@ -137,8 +178,8 @@ export default function MusterilerPage() {
 
       {/* Yeni Müşteri Modal */}
       {adding && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAdding(false)}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setAdding(false)}>
+          <div className="bg-gray-900 border border-gray-800 rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-base font-bold text-gray-100 mb-5">Yeni Müşteri</h2>
             <div className="space-y-3">
               {[

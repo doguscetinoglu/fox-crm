@@ -66,11 +66,89 @@ export default function TicketsPage() {
     return matchSearch && matchStatus && matchCat;
   });
 
+  const EditPanel = ({ t }: { t: Ticket }) => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4">
+      <div>
+        <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Mail İçeriği</p>
+        <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">{t.body || "(İçerik yok)"}</p>
+      </div>
+      <div className="space-y-3" onClick={e => e.stopPropagation()}>
+        <div>
+          <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Durum</label>
+          <div className="flex flex-wrap gap-1">
+            {STATUSES.map(s => (
+              <button key={s} onClick={() => patch(t.id, { status: s })}
+                className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${t.status === s ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Öncelik</label>
+          <div className="flex flex-wrap gap-1">
+            {PRIORITIES.map(p => (
+              <button key={p} onClick={() => patch(t.id, { priority: p })}
+                className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${t.priority === p ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Kategori</label>
+          <div className="flex flex-wrap gap-1">
+            {CATEGORIES.map(c => (
+              <button key={c} onClick={() => patch(t.id, { category: c })}
+                className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${t.category === c ? "bg-violet-700 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3" onClick={e => e.stopPropagation()}>
+        <div>
+          <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Atanan</label>
+          <div className="flex flex-wrap gap-1">
+            <button onClick={() => patch(t.id, { assigneeId: null })}
+              className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${!t.assigneeId ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+              Atanmadı
+            </button>
+            {users.map(u => (
+              <button key={u.id} onClick={() => patch(t.id, { assigneeId: u.id })}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-colors ${t.assigneeId === u.id ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+                <UserAvatar name={u.name} color={u.color} size="sm" />
+                {u.name.split(" ")[0]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Müşteri Bağla</label>
+          <div className="flex flex-col gap-1 max-h-36 overflow-y-auto pr-1">
+            <button onClick={() => patch(t.id, { customerId: null })}
+              className={`text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors ${!t.customerId ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+              Bağlama
+            </button>
+            {customers.map(c => (
+              <button key={c.id} onClick={() => patch(t.id, { customerId: c.id })}
+                className={`text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors ${t.customerId === c.id ? "bg-teal-700 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
+                <span className="font-medium">{c.name || "(İsimsiz)"}</span>
+                {c.company && <span className="text-gray-500 ml-1">· {c.company}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="p-7 space-y-6">
+    <div className="p-4 md:p-7 space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-100">Tüm Biletler</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-100">Tüm Biletler</h1>
           <p className="text-sm text-gray-500 mt-0.5">{filtered.length} / {tickets.length} ticket gösteriliyor</p>
         </div>
       </div>
@@ -83,7 +161,7 @@ export default function TicketsPage() {
           onChange={e => setSearch(e.target.value)}
           className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-600"
         />
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4">
           <div className="flex flex-wrap gap-1">
             {["Tümü", ...STATUSES].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
@@ -103,8 +181,59 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl py-16 text-center text-gray-600">Ticket bulunamadı</div>
+        )}
+        {filtered.map(t => {
+          const isExp = expanded === t.id;
+          return (
+            <div key={t.id}
+              className={`bg-gray-900 border rounded-2xl transition-all ${isExp ? "border-indigo-600/40" : "border-gray-800"} ${updating === t.id ? "opacity-50" : ""}`}>
+              <div className="p-4 cursor-pointer" onClick={() => setExpanded(isExp ? null : t.id)}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-100 text-sm leading-snug">{t.subject}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{t.fromEmail}</p>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); remove(t.id); }} className="text-gray-700 hover:text-red-400 text-xl leading-none shrink-0">×</button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={t.status} />
+                  <PriorityBadge priority={t.priority} />
+                  <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-md">{t.category}</span>
+                  {t.assignee ? (
+                    <div className="flex items-center gap-1">
+                      <UserAvatar name={t.assignee.name} color={t.assignee.color} size="sm" />
+                      <span className="text-xs text-gray-400">{t.assignee.name.split(" ")[0]}</span>
+                    </div>
+                  ) : <span className="text-xs text-red-400/60">Havuzda</span>}
+                  <span className="text-xs text-gray-600 ml-auto">
+                    {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                {t.customer && (
+                  <div className="mt-2">
+                    <Link href={`/musteriler/${t.customer.id}`} onClick={e => e.stopPropagation()}
+                      className="text-xs text-indigo-400 hover:text-indigo-300">
+                      {t.customer.name || t.customer.company || "Müşteri"} →
+                    </Link>
+                  </div>
+                )}
+              </div>
+              {isExp && (
+                <div className="px-4 pb-4 border-t border-gray-800 bg-gray-950/50 rounded-b-2xl">
+                  <EditPanel t={t} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-800">
@@ -171,87 +300,7 @@ export default function TicketsPage() {
                 {expanded === t.id && (
                   <tr key={`${t.id}-detail`} className="bg-gray-950/50">
                     <td colSpan={9} className="px-5 py-5">
-                      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                        {/* Mail içeriği */}
-                        <div className="xl:col-span-1">
-                          <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Mail İçeriği</p>
-                          <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">{t.body || "(İçerik yok)"}</p>
-                        </div>
-
-                        {/* Durum / Öncelik / Kategori */}
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
-                          <div>
-                            <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Durum</label>
-                            <div className="flex flex-wrap gap-1">
-                              {STATUSES.map(s => (
-                                <button key={s} onClick={() => patch(t.id, { status: s })}
-                                  className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${t.status === s ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                  {s}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Öncelik</label>
-                            <div className="flex flex-wrap gap-1">
-                              {PRIORITIES.map(p => (
-                                <button key={p} onClick={() => patch(t.id, { priority: p })}
-                                  className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${t.priority === p ? "bg-orange-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                  {p}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Kategori</label>
-                            <div className="flex flex-wrap gap-1">
-                              {CATEGORIES.map(c => (
-                                <button key={c} onClick={() => patch(t.id, { category: c })}
-                                  className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${t.category === c ? "bg-violet-700 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                  {c}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Atanan + Müşteri */}
-                        <div className="space-y-3" onClick={e => e.stopPropagation()}>
-                          <div>
-                            <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Atanan</label>
-                            <div className="flex flex-wrap gap-1">
-                              <button onClick={() => patch(t.id, { assigneeId: null })}
-                                className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${!t.assigneeId ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                Atanmadı
-                              </button>
-                              {users.map(u => (
-                                <button key={u.id} onClick={() => patch(t.id, { assigneeId: u.id })}
-                                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-colors ${t.assigneeId === u.id ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                  <UserAvatar name={u.name} color={u.color} size="sm" />
-                                  {u.name.split(" ")[0]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs text-gray-500 font-semibold uppercase block mb-1.5">Müşteri Bağla</label>
-                            <div className="flex flex-col gap-1 max-h-36 overflow-y-auto pr-1">
-                              <button onClick={() => patch(t.id, { customerId: null })}
-                                className={`text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors ${!t.customerId ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                Bağlama
-                              </button>
-                              {customers.map(c => (
-                                <button key={c.id} onClick={() => patch(t.id, { customerId: c.id })}
-                                  className={`text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors ${t.customerId === c.id ? "bg-teal-700 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-                                  <span className="font-medium">{c.name || "(İsimsiz)"}</span>
-                                  {c.company && <span className="text-gray-500 ml-1">· {c.company}</span>}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <EditPanel t={t} />
                     </td>
                   </tr>
                 )}
