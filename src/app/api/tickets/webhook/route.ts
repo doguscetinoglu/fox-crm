@@ -41,6 +41,15 @@ Mesaj: ${body.substring(0, 500)}
 
 export async function POST(req: NextRequest) {
   try {
+    // Webhook secret kontrolü (opsiyonel — WEBHOOK_SECRET set edilmişse zorunlu)
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const incoming = req.headers.get("x-webhook-secret");
+      if (incoming !== webhookSecret) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const body = await req.json();
     const {
       subject, body: emailBody, fromEmail, fromName,
