@@ -61,9 +61,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "subject ve fromEmail zorunludur" }, { status: 400 });
     }
 
-    // Telegram duplicate kontrolü
-    if (telegramMessageId) {
-      const existing = await prisma.ticket.findUnique({ where: { telegramMessageId: Number(telegramMessageId) } });
+    // Telegram duplicate kontrolü (NaN koruması ile)
+    const safeMsgId = telegramMessageId ? Number(telegramMessageId) : null;
+    const validMsgId = safeMsgId && !isNaN(safeMsgId) ? safeMsgId : null;
+    if (validMsgId) {
+      const existing = await prisma.ticket.findUnique({ where: { telegramMessageId: validMsgId } });
       if (existing) {
         return NextResponse.json({ success: true, ticket: existing, duplicate: true }, { status: 200 });
       }
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
         priority,
         source: source ?? "web",
         telegramChatId: telegramChatId ? String(telegramChatId) : null,
-        telegramMessageId: telegramMessageId ? Number(telegramMessageId) : null,
+        telegramMessageId: validMsgId,
       },
       include: { assignee: true, customer: true },
     });
