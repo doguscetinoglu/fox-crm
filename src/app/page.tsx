@@ -31,15 +31,15 @@ function KpiCard({ label, value, sub, color, icon }: {
   label: string; value: number | string; sub?: string; color: string; icon: React.ReactNode;
 }) {
   return (
-    <div className={`bg-gray-900 rounded-2xl p-4 md:p-5 border border-gray-800/80 relative overflow-hidden group hover:border-gray-700 transition-colors`}>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 md:p-5 border border-slate-200 dark:border-gray-800/80 relative overflow-hidden group hover:border-slate-300 dark:hover:border-gray-700 transition-colors shadow-sm dark:shadow-none">
       <div className={`absolute top-0 left-0 right-0 h-[3px] ${color}`} />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider truncate">{label}</p>
-          <p className="text-2xl md:text-3xl font-bold text-gray-100 mt-1 leading-none">{value}</p>
-          {sub && <p className="text-[11px] text-gray-600 mt-1.5 truncate">{sub}</p>}
+          <p className="text-[11px] font-semibold text-slate-500 dark:text-gray-500 uppercase tracking-wider truncate">{label}</p>
+          <p className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-gray-100 mt-1 leading-none">{value}</p>
+          {sub && <p className="text-[11px] text-slate-400 dark:text-gray-600 mt-1.5 truncate">{sub}</p>}
         </div>
-        <div className="shrink-0 w-9 h-9 rounded-xl bg-gray-800/60 flex items-center justify-center text-gray-500 group-hover:text-gray-400 transition-colors">
+        <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-100 dark:bg-gray-800/60 flex items-center justify-center text-slate-400 dark:text-gray-500 group-hover:text-slate-600 dark:group-hover:text-gray-400 transition-colors">
           {icon}
         </div>
       </div>
@@ -53,7 +53,7 @@ function Ring({ pct, color, size = 72 }: { pct: number; color: string; size?: nu
   const dash = (pct / 100) * circ;
   return (
     <svg width={size} height={size} className="-rotate-90" style={{ minWidth: size }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth={10} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-slate-200 dark:stroke-gray-800" strokeWidth={10} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={10}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
         style={{ transition: "stroke-dasharray 0.8s ease" }} />
@@ -66,10 +66,10 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-400 truncate pr-2">{label}</span>
-        <span className="text-gray-300 font-semibold shrink-0">{value}</span>
+        <span className="text-slate-600 dark:text-gray-400 truncate pr-2">{label}</span>
+        <span className="text-slate-800 dark:text-gray-300 font-semibold shrink-0">{value}</span>
       </div>
-      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-200 dark:bg-gray-800 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -109,25 +109,24 @@ export default function Dashboard() {
   const iconCalendar = <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
   const iconUsers = <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
   const iconInbox = <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>;
-  const iconCheck = <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
   return (
-    <div className="p-4 md:p-6 lg:p-7 space-y-5 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-7 space-y-5 max-w-[1600px] mx-auto animate-fade-in">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-100">{greeting}</h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-gray-100">{greeting}</h1>
+          <p className="text-xs md:text-sm text-slate-500 dark:text-gray-500 mt-0.5">
             {isAdmin ? "Tüm sistem istatistikleri" : "Atanmış ve havuz biletleriniz"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600 hidden sm:block">
+          <span className="text-xs text-slate-400 dark:text-gray-600 hidden sm:block">
             {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}
           </span>
           {!isAdmin && (
-            <Link href="/havuz" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors">
+            <Link href="/havuz" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
               + Havuza Git
             </Link>
           )}
@@ -155,19 +154,19 @@ export default function Dashboard() {
       {/* Durum Kartları */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
         {[
-          { label: "Yeni", val: s?.open, color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20", dot: "bg-violet-400" },
-          { label: "İnceleniyor", val: s?.inProgress, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", dot: "bg-amber-400" },
-          { label: "Yanıtlandı", val: s?.answered, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", dot: "bg-emerald-400" },
-          { label: "Kapalı", val: s?.closed, color: "text-gray-400", bg: "bg-gray-700/20 border-gray-700/40", dot: "bg-gray-500" },
+          { label: "Yeni",        val: s?.open,      color: "text-violet-700 dark:text-violet-400",  bg: "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20",   dot: "bg-violet-500" },
+          { label: "İnceleniyor", val: s?.inProgress, color: "text-amber-700 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20",     dot: "bg-amber-500" },
+          { label: "Yanıtlandı",  val: s?.answered,  color: "text-emerald-700 dark:text-emerald-400",bg: "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20", dot: "bg-emerald-500" },
+          { label: "Kapalı",      val: s?.closed,    color: "text-slate-600 dark:text-gray-400",    bg: "bg-slate-100 dark:bg-gray-700/20 border-slate-200 dark:border-gray-700/40",        dot: "bg-slate-400 dark:bg-gray-500" },
         ].map(({ label, val, color, bg, dot }) => (
           <div key={label} className={`${bg} border rounded-2xl p-4 md:p-5`}>
             <div className="flex items-center gap-2 mb-1">
               <span className={`w-2 h-2 rounded-full ${dot}`} />
-              <span className="text-xs text-gray-500 font-medium">{label}</span>
+              <span className="text-xs text-slate-600 dark:text-gray-500 font-medium">{label}</span>
             </div>
             <p className={`text-2xl md:text-3xl font-bold ${color}`}>{val ?? "—"}</p>
             {s && s.total > 0 && (
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-[10px] text-slate-400 dark:text-gray-600 mt-1">
                 %{Math.round((val! / s.total) * 100)}
               </p>
             )}
@@ -178,12 +177,12 @@ export default function Dashboard() {
       {/* Oranlar + Trend */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Ring göstergeleri */}
-        <div className="bg-gray-900 border border-gray-800/80 rounded-2xl p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-200">Özet Oranlar</h2>
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 space-y-4 shadow-sm dark:shadow-none">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">Özet Oranlar</h2>
           {[
-            { label: "Çözüm", sub: "Yanıtlandı + Kapalı", pct: resolvedPct, color: "#10b981", textColor: "text-emerald-400" },
-            { label: "Açık", sub: "Yeni + İnceleniyor", pct: openPct, color: "#f59e0b", textColor: "text-amber-400" },
-            { label: "Atanmamış", sub: "Havuzdaki oran", pct: unassignedPct, color: "#ef4444", textColor: "text-red-400" },
+            { label: "Çözüm", sub: "Yanıtlandı + Kapalı", pct: resolvedPct, color: "#10b981", textColor: "text-emerald-600 dark:text-emerald-400" },
+            { label: "Açık", sub: "Yeni + İnceleniyor", pct: openPct, color: "#f59e0b", textColor: "text-amber-600 dark:text-amber-400" },
+            { label: "Atanmamış", sub: "Havuzdaki oran", pct: unassignedPct, color: "#ef4444", textColor: "text-red-600 dark:text-red-400" },
           ].map(({ label, sub, pct, color, textColor }) => (
             <div key={label} className="flex items-center gap-3">
               <div className="relative shrink-0">
@@ -193,25 +192,25 @@ export default function Dashboard() {
                 </span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-200">{label}</p>
-                <p className="text-xs text-gray-500">{sub}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-gray-200">{label}</p>
+                <p className="text-xs text-slate-500 dark:text-gray-500">{sub}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Trend grafik */}
-        <div className="lg:col-span-3 bg-gray-900 border border-gray-800/80 rounded-2xl p-5">
+        <div className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 shadow-sm dark:shadow-none">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-gray-200">Ticket Trendi</h2>
-              <p className="text-xs text-gray-500 mt-0.5">{isAdmin ? "Tüm biletler" : "Görünür biletleriniz"}</p>
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">Ticket Trendi</h2>
+              <p className="text-xs text-slate-500 dark:text-gray-500 mt-0.5">{isAdmin ? "Tüm biletler" : "Görünür biletleriniz"}</p>
             </div>
-            <div className="flex gap-1 bg-gray-800/60 rounded-lg p-0.5">
-              <button onClick={() => setTab("daily")} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tab === "daily" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-gray-200"}`}>
+            <div className="flex gap-1 bg-slate-100 dark:bg-gray-800/60 rounded-lg p-0.5">
+              <button onClick={() => setTab("daily")} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tab === "daily" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200"}`}>
                 7 Gün
               </button>
-              <button onClick={() => setTab("monthly")} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tab === "monthly" ? "bg-violet-600 text-white shadow-sm" : "text-gray-400 hover:text-gray-200"}`}>
+              <button onClick={() => setTab("monthly")} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tab === "monthly" ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200"}`}>
                 6 Ay
               </button>
             </div>
@@ -228,15 +227,15 @@ export default function Dashboard() {
       {/* Dağılım + Ekip/Kategori */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* Durum dağılımı */}
-        <div className="bg-gray-900 border border-gray-800/80 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-gray-200 mb-4">Durum Dağılımı</h2>
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 shadow-sm dark:shadow-none">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200 mb-4">Durum Dağılımı</h2>
           {s ? (
             <div className="space-y-3.5">
               {[
                 { label: "Yeni", val: s.open, color: "bg-violet-500" },
                 { label: "İnceleniyor", val: s.inProgress, color: "bg-amber-500" },
                 { label: "Yanıtlandı", val: s.answered, color: "bg-emerald-500" },
-                { label: "Kapalı", val: s.closed, color: "bg-gray-600" },
+                { label: "Kapalı", val: s.closed, color: "bg-slate-400 dark:bg-gray-600" },
               ].map(({ label, val, color }) => (
                 <BarRow key={label} label={label} value={val} max={s.total} color={color} />
               ))}
@@ -245,9 +244,9 @@ export default function Dashboard() {
         </div>
 
         {/* Kategori + Öncelik */}
-        <div className="bg-gray-900 border border-gray-800/80 rounded-2xl p-5 space-y-5">
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 space-y-5 shadow-sm dark:shadow-none">
           <div>
-            <h2 className="text-sm font-semibold text-gray-200 mb-3">Kategoriye Göre</h2>
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200 mb-3">Kategoriye Göre</h2>
             <div className="space-y-2.5">
               {(s?.byCategory ?? []).slice(0, 4).map(c => (
                 <BarRow key={c.category} label={c.category} value={c._count.id}
@@ -257,7 +256,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-gray-200 mb-3">Önceliğe Göre</h2>
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200 mb-3">Önceliğe Göre</h2>
             <div className="space-y-2.5">
               {(s?.byPriority ?? []).map(p => (
                 <BarRow key={p.priority} label={p.priority} value={p._count.id}
@@ -270,8 +269,8 @@ export default function Dashboard() {
 
         {/* Ekip yükü (admin) veya kendi durum özeti (agent) */}
         {isAdmin ? (
-          <div className="bg-gray-900 border border-gray-800/80 rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-gray-200 mb-4">Ekip Yükü</h2>
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 shadow-sm dark:shadow-none">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200 mb-4">Ekip Yükü</h2>
             <div className="space-y-3">
               {(s?.users ?? []).map(u => {
                 const maxTickets = Math.max(...(s?.users ?? []).map(x => x._count.tickets), 1);
@@ -280,16 +279,16 @@ export default function Dashboard() {
                     <UserAvatar name={u.name} color={u.color} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between text-xs mb-0.5">
-                        <span className="text-gray-300 font-medium truncate">{u.name.split(" ")[0]}</span>
-                        <span className="text-gray-500 shrink-0 ml-2">{u._count.tickets}</span>
+                        <span className="text-slate-700 dark:text-gray-300 font-medium truncate">{u.name.split(" ")[0]}</span>
+                        <span className="text-slate-500 dark:text-gray-500 shrink-0 ml-2">{u._count.tickets}</span>
                       </div>
-                      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-slate-200 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div className="h-full bg-indigo-500 rounded-full transition-all duration-700"
                           style={{ width: `${(u._count.tickets / maxTickets) * 100}%` }} />
                       </div>
                     </div>
                     {u.openTickets > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 shrink-0 font-semibold">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 shrink-0 font-semibold">
                         {u.openTickets}
                       </span>
                     )}
@@ -300,24 +299,24 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="bg-gray-900 border border-gray-800/80 rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-gray-200 mb-4">Benim Özetim</h2>
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 shadow-sm dark:shadow-none">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200 mb-4">Benim Özetim</h2>
             {s ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-800/60 rounded-xl">
-                  <span className="text-sm text-gray-400">Çözüm Oranım</span>
-                  <span className="text-lg font-bold text-emerald-400">%{resolvedPct}</span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800/60 rounded-xl">
+                  <span className="text-sm text-slate-600 dark:text-gray-400">Çözüm Oranım</span>
+                  <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">%{resolvedPct}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-800/60 rounded-xl">
-                  <span className="text-sm text-gray-400">Bu Ay Gelen</span>
-                  <span className="text-lg font-bold text-blue-400">{s.monthCount}</span>
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800/60 rounded-xl">
+                  <span className="text-sm text-slate-600 dark:text-gray-400">Bu Ay Gelen</span>
+                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{s.monthCount}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-800/60 rounded-xl">
-                  <span className="text-sm text-gray-400">Havuz (Alınabilir)</span>
-                  <span className="text-lg font-bold text-rose-400">{s.unassigned}</span>
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800/60 rounded-xl">
+                  <span className="text-sm text-slate-600 dark:text-gray-400">Havuz (Alınabilir)</span>
+                  <span className="text-lg font-bold text-rose-600 dark:text-rose-400">{s.unassigned}</span>
                 </div>
                 <Link href="/havuz"
-                  className="block w-full text-center py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 text-sm font-semibold rounded-xl transition-colors border border-indigo-600/30">
+                  className="block w-full text-center py-2.5 bg-indigo-50 dark:bg-indigo-600/20 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 text-indigo-600 dark:text-indigo-400 text-sm font-semibold rounded-xl transition-colors border border-indigo-200 dark:border-indigo-600/30">
                   Havuza Git →
                 </Link>
               </div>
@@ -328,58 +327,58 @@ export default function Dashboard() {
 
       {/* En aktif müşteriler — sadece admin */}
       {isAdmin && (
-        <div className="bg-gray-900 border border-gray-800/80 rounded-2xl p-5">
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl p-5 shadow-sm dark:shadow-none">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-200">En Aktif Müşteriler</h2>
-            <Link href="/musteriler" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">En Aktif Müşteriler</h2>
+            <Link href="/musteriler" className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors font-medium">
               Tümünü gör →
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
             {(s?.topCustomers ?? []).map((c, i) => (
               <Link key={c.id} href={`/musteriler/${c.id}`}
-                className="bg-gray-800/50 hover:bg-gray-800 border border-gray-700/40 hover:border-gray-600/60 rounded-xl p-3 md:p-4 transition-all block group">
+                className="bg-slate-50 dark:bg-gray-800/50 hover:bg-slate-100 dark:hover:bg-gray-800 border border-slate-200 dark:border-gray-700/40 hover:border-indigo-200 dark:hover:border-gray-600/60 rounded-xl p-3 md:p-4 transition-all block group">
                 <div className="flex items-center gap-2 mb-2.5">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-indigo-500/20">
                     {(c.name || c.email)[0].toUpperCase()}
                   </div>
-                  <span className="text-[10px] text-gray-600 font-mono">#{i + 1}</span>
+                  <span className="text-[10px] text-slate-400 dark:text-gray-600 font-mono">#{i + 1}</span>
                 </div>
-                <p className="text-sm font-semibold text-gray-200 truncate group-hover:text-white transition-colors">{c.name || c.email}</p>
-                {c.company && <p className="text-[11px] text-gray-500 truncate mt-0.5">{c.company}</p>}
+                <p className="text-sm font-semibold text-slate-800 dark:text-gray-200 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{c.name || c.email}</p>
+                {c.company && <p className="text-[11px] text-slate-500 dark:text-gray-500 truncate mt-0.5">{c.company}</p>}
                 <div className="mt-2.5 flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-indigo-400">{c._count.tickets}</span>
-                  <span className="text-[11px] text-gray-600">bilet</span>
+                  <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{c._count.tickets}</span>
+                  <span className="text-[11px] text-slate-400 dark:text-gray-600">bilet</span>
                 </div>
               </Link>
             ))}
             {(!s?.topCustomers || s.topCustomers.length === 0) && (
-              <p className="text-xs text-gray-600 col-span-5 text-center py-6">Henüz müşteri yok</p>
+              <p className="text-xs text-slate-400 dark:text-gray-600 col-span-5 text-center py-6">Henüz müşteri yok</p>
             )}
           </div>
         </div>
       )}
 
       {/* Son biletler */}
-      <div className="bg-gray-900 border border-gray-800/80 rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800/80">
-          <h2 className="text-sm font-semibold text-gray-200">Son Biletler</h2>
-          <Link href="/tickets" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
+      <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800/80 rounded-2xl overflow-hidden shadow-sm dark:shadow-none">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-gray-800/80">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">Son Biletler</h2>
+          <Link href="/tickets" className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors font-medium">
             Tümünü gör →
           </Link>
         </div>
         {!s?.recent || s.recent.length === 0 ? (
-          <div className="py-12 text-center text-gray-600 text-sm">Henüz bilet yok</div>
+          <div className="py-12 text-center text-slate-400 dark:text-gray-600 text-sm">Henüz bilet yok</div>
         ) : (
-          <div className="divide-y divide-gray-800/60">
+          <div className="divide-y divide-slate-100 dark:divide-gray-800/60">
             {s.recent.map(t => (
-              <div key={t.id} className="flex items-center gap-3 px-4 md:px-5 py-3 hover:bg-gray-800/30 transition-colors">
-                <span className="text-xs text-gray-600 font-mono w-7 shrink-0 hidden sm:block">#{t.id}</span>
+              <div key={t.id} className="flex items-center gap-3 px-4 md:px-5 py-3 hover:bg-slate-50 dark:hover:bg-gray-800/30 transition-colors">
+                <span className="text-xs text-slate-400 dark:text-gray-600 font-mono w-7 shrink-0 hidden sm:block">#{t.id}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-200 truncate font-medium">{t.subject}</p>
-                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                  <p className="text-sm text-slate-800 dark:text-gray-200 truncate font-medium">{t.subject}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-gray-500 truncate mt-0.5">
                     {t.customer?.name || t.fromName || t.fromEmail}
-                    {t.customer?.company && <span className="text-gray-600"> · {t.customer.company}</span>}
+                    {t.customer?.company && <span className="text-slate-400 dark:text-gray-600"> · {t.customer.company}</span>}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -392,9 +391,9 @@ export default function Dashboard() {
                       <UserAvatar name={t.assignee.name} color={t.assignee.color} size="sm" />
                     </span>
                   ) : (
-                    <span className="text-[10px] text-rose-400/80 font-medium hidden sm:block">Havuz</span>
+                    <span className="text-[10px] text-rose-500 dark:text-rose-400/80 font-medium hidden sm:block">Havuz</span>
                   )}
-                  <span className="text-[10px] text-gray-600 hidden lg:block whitespace-nowrap">
+                  <span className="text-[10px] text-slate-400 dark:text-gray-600 hidden lg:block whitespace-nowrap">
                     {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -411,9 +410,9 @@ export default function Dashboard() {
 function Skeleton() {
   return (
     <div className="space-y-2 animate-pulse">
-      <div className="h-3 bg-gray-800 rounded w-3/4" />
-      <div className="h-3 bg-gray-800 rounded w-1/2" />
-      <div className="h-3 bg-gray-800 rounded w-2/3" />
+      <div className="h-3 bg-slate-200 dark:bg-gray-800 rounded w-3/4" />
+      <div className="h-3 bg-slate-200 dark:bg-gray-800 rounded w-1/2" />
+      <div className="h-3 bg-slate-200 dark:bg-gray-800 rounded w-2/3" />
     </div>
   );
 }

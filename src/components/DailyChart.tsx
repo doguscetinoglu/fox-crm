@@ -17,7 +17,7 @@ export default function DailyChart({ data }: { data: Day[] }) {
               className="w-full bg-indigo-600/70 hover:bg-indigo-500 rounded-t-sm transition-all duration-300 cursor-default"
               style={{ height: `${Math.max(pct, 4)}%` }}
             />
-            <span className="text-[10px] text-gray-600">{dayName}</span>
+            <span className="text-[10px] text-slate-500 dark:text-gray-600">{dayName}</span>
             <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-gray-200 text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
               {d.count} ticket
             </div>

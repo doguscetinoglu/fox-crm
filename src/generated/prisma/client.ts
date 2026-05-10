@@ -56,3 +56,8 @@ export type Customer = Prisma.CustomerModel
  * 
  */
 export type Ticket = Prisma.TicketModel
+/**
+ * Model TicketReply
+ * 
+ */
+export type TicketReply = Prisma.TicketReplyModel

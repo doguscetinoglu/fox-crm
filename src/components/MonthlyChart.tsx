@@ -17,7 +17,7 @@ export default function MonthlyChart({ data }: { data: Item[] }) {
         const [, mm] = d.month.split("-");
         return (
           <div key={d.month} className="flex-1 flex flex-col items-center gap-1.5 group relative">
-            <span className="text-xs font-bold text-gray-300 absolute -top-5">{d.count || ""}</span>
+            <span className="text-xs font-bold text-slate-600 dark:text-gray-300 absolute -top-5">{d.count || ""}</span>
             <div
               className="w-full bg-violet-600/70 hover:bg-violet-500 rounded-t transition-all duration-500 cursor-default"
               style={{ height: `${Math.max(pct, 4)}%` }}

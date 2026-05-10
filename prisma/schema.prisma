@@ -18,6 +18,7 @@ model User {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   tickets   Ticket[]
+  replies   TicketReply[]
 
   @@map("users")
 }
@@ -39,20 +40,34 @@ model Customer {
 }
 
 model Ticket {
-  id         Int       @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   subject    String
   body       String
   fromEmail  String
   fromName   String?
-  category   String    @default("Genel")
-  status     String    @default("Yeni")
+  category   String        @default("Genel")
+  status     String        @default("Yeni")
   assigneeId Int?
-  assignee   User?     @relation(fields: [assigneeId], references: [id])
+  assignee   User?         @relation(fields: [assigneeId], references: [id])
   customerId Int?
-  customer   Customer? @relation(fields: [customerId], references: [id])
-  priority   String    @default("Normal")
-  receivedAt DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  customer   Customer?     @relation(fields: [customerId], references: [id])
+  priority   String        @default("Normal")
+  receivedAt DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  replies    TicketReply[]
 
   @@map("tickets")
+}
+
+model TicketReply {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id])
+  body       String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("ticket_replies")
 }

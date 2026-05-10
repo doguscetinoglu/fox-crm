@@ -11,4 +11,5 @@
 export type * from './models/User'
 export type * from './models/Customer'
 export type * from './models/Ticket'
+export type * from './models/TicketReply'
 export type * from './commonInputTypes'
