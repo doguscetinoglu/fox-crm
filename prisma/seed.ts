@@ -1,16 +1,17 @@
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
-import path from "path";
+import ws from "ws";
 
-const dbPath = path.resolve(process.cwd(), "dev.db");
-const adapter = new PrismaBetterSqlite3({ url: dbPath });
+neonConfig.webSocketConstructor = ws;
+
+const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function hash(p: string) { return bcrypt.hash(p, 10); }
 
 async function main() {
-  // Admin kullanıcı
   await prisma.user.upsert({
     where: { email: "admin@sirket.com" },
     update: {},
@@ -24,7 +25,6 @@ async function main() {
     },
   });
 
-  // Destek ekibi
   const agents = [
     { name: "Ahmet Yılmaz", email: "ahmet@sirket.com", role: "Senior Agent", color: "blue" },
     { name: "Elif Kaya",    email: "elif@sirket.com",  role: "Agent",        color: "purple" },
@@ -41,13 +41,12 @@ async function main() {
     });
   }
 
-  // Demo müşteriler
   const customers = [
-    { email: "ali@musteri.com",    name: "Ali Yılmaz",     company: "Müşteri A.Ş.",  phone: "+90 532 111 22 33", password: await hash("Musteri123!"), monthlyPrice: 5000 },
-    { email: "zeynep@holding.com", name: "Zeynep Demir",   company: "Holding Group",  phone: "+90 533 444 55 66", password: await hash("Musteri123!"), monthlyPrice: 12000 },
-    { email: "devops@tech.co",     name: "Can Öztürk",     company: "Tech Co",        phone: null,                password: await hash("Musteri123!"), monthlyPrice: 3500 },
-    { email: "selin@firma.net",    name: "Selin Arslan",   company: "Firma Net",      phone: null,                password: null,                       monthlyPrice: null },
-    { email: "ik@kargo.net",       name: "IK Departmanı",  company: "Kargo A.Ş.",    phone: null,                password: null,                       monthlyPrice: 2000 },
+    { email: "ali@musteri.com",    name: "Ali Yılmaz",    company: "Müşteri A.Ş.", phone: "+90 532 111 22 33", password: await hash("Musteri123!"), monthlyPrice: 5000 },
+    { email: "zeynep@holding.com", name: "Zeynep Demir",  company: "Holding Group", phone: "+90 533 444 55 66", password: await hash("Musteri123!"), monthlyPrice: 12000 },
+    { email: "devops@tech.co",     name: "Can Öztürk",    company: "Tech Co",       phone: null,               password: await hash("Musteri123!"), monthlyPrice: 3500 },
+    { email: "selin@firma.net",    name: "Selin Arslan",  company: "Firma Net",     phone: null,               password: null,                      monthlyPrice: null },
+    { email: "ik@kargo.net",       name: "IK Departmanı", company: "Kargo A.Ş.",   phone: null,               password: null,                      monthlyPrice: 2000 },
   ];
 
   for (const c of customers) {
@@ -58,7 +57,6 @@ async function main() {
     });
   }
 
-  // Demo ticketlar
   const users = await prisma.user.findMany();
   const custs = await prisma.customer.findMany();
   const byEmail = (email: string) => custs.find(c => c.email === email)!;
@@ -80,9 +78,9 @@ async function main() {
   }
 
   console.log("Seed tamamlandı.");
-  console.log("Admin:  admin@sirket.com / Admin123!");
-  console.log("Agent:  ahmet@sirket.com / Sifre123!");
-  console.log("Müşteri: ali@musteri.com / Musteri123!");
+  console.log("Admin:   admin@sirket.com / Admin123!");
+  console.log("Agent:   ahmet@sirket.com / Sifre123!");
+  console.log("Müşteri: ali@musteri.com  / Musteri123!");
 }
 
 main().finally(() => prisma.$disconnect());

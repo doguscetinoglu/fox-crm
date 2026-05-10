@@ -19,8 +19,8 @@ const config: runtime.GetPrismaClientConfig = {
   "previewFeatures": [],
   "clientVersion": "7.8.0",
   "engineVersion": "3c6e192761c0362d496ed980de936e2f3cebcd3a",
-  "activeProvider": "sqlite",
-  "inlineSchema": "generator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n}\n\nmodel User {\n  id        Int      @id @default(autoincrement())\n  name      String\n  email     String   @unique\n  password  String\n  isAdmin   Boolean  @default(false)\n  role      String   @default(\"Agent\")\n  color     String   @default(\"indigo\")\n  isActive  Boolean  @default(true)\n  createdAt DateTime @default(now())\n  tickets   Ticket[]\n\n  @@map(\"users\")\n}\n\nmodel Customer {\n  id           Int      @id @default(autoincrement())\n  email        String   @unique\n  name         String?\n  company      String?\n  phone        String?\n  notes        String?\n  password     String?\n  monthlyPrice Float?\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n  tickets      Ticket[]\n\n  @@map(\"customers\")\n}\n\nmodel Ticket {\n  id         Int       @id @default(autoincrement())\n  subject    String\n  body       String\n  fromEmail  String\n  fromName   String?\n  category   String    @default(\"Genel\")\n  status     String    @default(\"Yeni\")\n  assigneeId Int?\n  assignee   User?     @relation(fields: [assigneeId], references: [id])\n  customerId Int?\n  customer   Customer? @relation(fields: [customerId], references: [id])\n  priority   String    @default(\"Normal\")\n  receivedAt DateTime  @default(now())\n  updatedAt  DateTime  @updatedAt\n\n  @@map(\"tickets\")\n}\n",
+  "activeProvider": "postgresql",
+  "inlineSchema": "generator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel User {\n  id        Int      @id @default(autoincrement())\n  name      String\n  email     String   @unique\n  password  String\n  isAdmin   Boolean  @default(false)\n  role      String   @default(\"Agent\")\n  color     String   @default(\"indigo\")\n  isActive  Boolean  @default(true)\n  createdAt DateTime @default(now())\n  tickets   Ticket[]\n\n  @@map(\"users\")\n}\n\nmodel Customer {\n  id           Int      @id @default(autoincrement())\n  email        String   @unique\n  name         String?\n  company      String?\n  phone        String?\n  notes        String?\n  password     String?\n  monthlyPrice Float?\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n  tickets      Ticket[]\n\n  @@map(\"customers\")\n}\n\nmodel Ticket {\n  id         Int       @id @default(autoincrement())\n  subject    String\n  body       String\n  fromEmail  String\n  fromName   String?\n  category   String    @default(\"Genel\")\n  status     String    @default(\"Yeni\")\n  assigneeId Int?\n  assignee   User?     @relation(fields: [assigneeId], references: [id])\n  customerId Int?\n  customer   Customer? @relation(fields: [customerId], references: [id])\n  priority   String    @default(\"Normal\")\n  receivedAt DateTime  @default(now())\n  updatedAt  DateTime  @updatedAt\n\n  @@map(\"tickets\")\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -45,10 +45,10 @@ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Modul
 }
 
 config.compilerWasm = {
-  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.sqlite.mjs"),
+  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.mjs")
+    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")
     return await decodeBase64AsWasm(wasm)
   },
 
