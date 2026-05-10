@@ -4,9 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { StatusBadge, PriorityBadge } from "@/components/StatusBadge";
 import type { SessionUser } from "@/lib/session";
 
+interface Attachment { url: string; name: string; size: number; type: string; }
+
 interface Reply {
   id: number; body: string; isInternal: boolean; createdAt: string;
   user: { name: string; color: string } | null;
+  attachments: Attachment[];
 }
 
 interface Ticket {
@@ -18,11 +21,37 @@ interface Ticket {
 const CATEGORIES = ["Genel", "Teknik Destek", "Fatura", "Öneri", "Şikayet"];
 const PRIORITIES = ["Normal", "Yüksek", "Kritik"];
 
+function formatBytes(b: number) {
+  if (b < 1024) return `${b}B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)}KB`;
+  return `${(b / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function AttachmentView({ att }: { att: Attachment }) {
+  if (att.type.startsWith("image/")) {
+    return (
+      <a href={att.url} target="_blank" rel="noopener noreferrer" className="block mt-1.5">
+        <img src={att.url} alt={att.name} className="max-h-40 max-w-full rounded-xl border border-black/10 object-contain" />
+      </a>
+    );
+  }
+  return (
+    <a href={att.url} target="_blank" rel="noopener noreferrer"
+      className="flex items-center gap-1.5 mt-1.5 text-xs bg-black/10 hover:bg-black/20 rounded-lg px-2.5 py-1.5 transition-colors">
+      <span>📄</span>
+      <span className="truncate max-w-[180px]">{att.name}</span>
+      <span className="shrink-0 opacity-70">{formatBytes(att.size)}</span>
+    </a>
+  );
+}
+
 function ReplyThread({ ticketId, onClose }: { ticketId: number; onClose: () => void }) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [text, setText] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/tickets/${ticketId}/replies`).then(r => r.json());
@@ -32,22 +61,33 @@ function ReplyThread({ ticketId, onClose }: { ticketId: number; onClose: () => v
   useEffect(() => { load(); }, [load]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [replies]);
 
+  const removeFile = (i: number) => setFiles(f => f.filter((_, idx) => idx !== i));
+
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() && files.length === 0) return;
     setSending(true);
+
+    const uploaded: Attachment[] = [];
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) uploaded.push(await res.json());
+    }
+
     await fetch(`/api/tickets/${ticketId}/replies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: text.trim(), isInternal: false }),
+      body: JSON.stringify({ body: text.trim(), isInternal: false, attachments: uploaded }),
     });
     setText("");
+    setFiles([]);
     setSending(false);
     load();
   };
 
   return (
     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-gray-800">
-      {/* Yanıt dizisi */}
       <div className="space-y-3 max-h-64 overflow-y-auto pr-1 mb-4">
         {replies.length === 0 && (
           <p className="text-xs text-slate-400 dark:text-gray-600 text-center py-4">Henüz yanıt yok</p>
@@ -64,7 +104,8 @@ function ReplyThread({ ticketId, onClose }: { ticketId: number; onClose: () => v
                 {isAgent && (
                   <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 mb-1">{r.user!.name}</p>
                 )}
-                <p className="whitespace-pre-wrap">{r.body}</p>
+                {r.body && <p className="whitespace-pre-wrap">{r.body}</p>}
+                {r.attachments?.map((att, i) => <AttachmentView key={i} att={att} />)}
                 <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-1 text-right">
                   {new Date(r.createdAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </p>
@@ -75,18 +116,56 @@ function ReplyThread({ ticketId, onClose }: { ticketId: number; onClose: () => v
         <div ref={bottomRef} />
       </div>
 
-      {/* Yanıt formu */}
+      {/* File previews */}
+      {files.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {files.map((f, i) => (
+            <div key={i} className="relative group">
+              {f.type.startsWith("image/") ? (
+                <img src={URL.createObjectURL(f)} alt={f.name}
+                  className="h-14 w-14 object-cover rounded-lg border border-slate-200 dark:border-gray-700" />
+              ) : (
+                <div className="h-14 w-14 rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-0.5 px-1">
+                  <span className="text-xl">📄</span>
+                  <span className="text-[8px] text-slate-400 text-center leading-tight line-clamp-2">{f.name}</span>
+                </div>
+              )}
+              <button onClick={() => removeFile(i)}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Reply form */}
       <div className="flex gap-2">
-        <textarea
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send(); }}
-          rows={2}
-          placeholder="Yanıtınızı yazın... (Ctrl+Enter ile gönder)"
-          className="flex-1 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-none"
-        />
+        <div className="flex-1 space-y-1.5">
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send(); }}
+            rows={2}
+            placeholder="Yanıtınızı yazın... (Ctrl+Enter ile gönder)"
+            className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-none"
+          />
+          <button onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1 text-xs text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            📎 Dosya ekle {files.length > 0 && `(${files.length})`}
+          </button>
+          <input ref={fileRef} type="file" multiple
+            accept="image/*,application/pdf,.doc,.docx,.xlsx,.zip,.txt"
+            className="hidden"
+            onChange={e => {
+              const picked = Array.from(e.target.files ?? []);
+              setFiles(prev => [...prev, ...picked].slice(0, 5));
+              e.target.value = "";
+            }}
+          />
+        </div>
         <div className="flex flex-col gap-1.5">
-          <button onClick={send} disabled={sending || !text.trim()}
+          <button onClick={send} disabled={sending || (!text.trim() && files.length === 0)}
             className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition-colors">
             {sending ? "..." : "Gönder"}
           </button>
@@ -196,49 +275,53 @@ export default function PortalPage() {
               <p className="font-semibold text-slate-700 dark:text-gray-400">Henüz talep yok</p>
               <p className="text-sm text-slate-400 dark:text-gray-600 mt-1">Yeni bir destek talebi oluşturabilirsiniz</p>
             </div>
-          ) : filtered.map(t => (
-            <div key={t.id} className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-4 md:p-5 shadow-sm dark:shadow-none hover:border-indigo-200 dark:hover:border-gray-700 transition-all">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-xs text-slate-400 dark:text-gray-600 font-mono">#{t.id}</span>
-                    <span className="text-xs bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-2 py-0.5 rounded-md">{t.category}</span>
+          ) : filtered.map(t => {
+            const isOpen = openTicketId === t.id;
+            return (
+              <div key={t.id}
+                className={`bg-white dark:bg-gray-900 border rounded-2xl p-4 md:p-5 shadow-sm dark:shadow-none transition-all cursor-pointer ${isOpen ? "border-indigo-300 dark:border-indigo-600/40" : "border-slate-200 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-gray-700"}`}
+                onClick={() => setOpenTicketId(isOpen ? null : t.id)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs text-slate-400 dark:text-gray-600 font-mono">#{t.id}</span>
+                      <span className="text-xs bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-2 py-0.5 rounded-md">{t.category}</span>
+                    </div>
+                    <p className="font-semibold text-slate-800 dark:text-gray-100">{t.subject}</p>
+                    {t.body && !isOpen && <p className="text-sm text-slate-500 dark:text-gray-500 mt-1 line-clamp-2">{t.body}</p>}
                   </div>
-                  <p className="font-semibold text-slate-800 dark:text-gray-100">{t.subject}</p>
-                  {t.body && <p className="text-sm text-slate-500 dark:text-gray-500 mt-1 line-clamp-2">{t.body}</p>}
-                </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <StatusBadge status={t.status} />
-                  <PriorityBadge priority={t.priority} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-gray-800 gap-2">
-                {t.assignee ? (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{t.assignee.name[0]}</div>
-                    <span className="text-xs text-slate-500 dark:text-gray-500 truncate">{t.assignee.name} inceliyor</span>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <StatusBadge status={t.status} />
+                    <PriorityBadge priority={t.priority} />
                   </div>
-                ) : (
-                  <span className="text-xs text-slate-400 dark:text-gray-600">Ekip incelemede</span>
-                )}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-slate-400 dark:text-gray-600">
-                    {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <button
-                    onClick={() => setOpenTicketId(openTicketId === t.id ? null : t.id)}
-                    className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                    {openTicketId === t.id ? "Kapat" : "Yanıtlar"}
-                  </button>
                 </div>
-              </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-gray-800 gap-2">
+                  {t.assignee ? (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{t.assignee.name[0]}</div>
+                      <span className="text-xs text-slate-500 dark:text-gray-500 truncate">{t.assignee.name} inceliyor</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400 dark:text-gray-600">Ekip incelemede</span>
+                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-slate-400 dark:text-gray-600">
+                      {new Date(t.receivedAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className={`text-slate-400 dark:text-gray-600 text-xs transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
+                  </div>
+                </div>
 
-              {/* Yanıt paneli */}
-              {openTicketId === t.id && (
-                <ReplyThread ticketId={t.id} onClose={() => setOpenTicketId(null)} />
-              )}
-            </div>
-          ))}
+                {/* Reply thread */}
+                {isOpen && (
+                  <div onClick={e => e.stopPropagation()}>
+                    <ReplyThread ticketId={t.id} onClose={() => setOpenTicketId(null)} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

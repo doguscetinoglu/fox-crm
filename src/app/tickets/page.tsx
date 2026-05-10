@@ -7,7 +7,8 @@ import { StatusBadge, PriorityBadge } from "@/components/StatusBadge";
 
 interface User { id: number; name: string; color: string; }
 interface Customer { id: number; name: string | null; company: string | null; }
-interface Reply { id: number; body: string; isInternal: boolean; createdAt: string; user: { name: string; color: string } | null; }
+interface Attachment { url: string; name: string; size: number; type: string; }
+interface Reply { id: number; body: string; isInternal: boolean; createdAt: string; user: { name: string; color: string } | null; attachments: Attachment[]; }
 interface Ticket {
   id: number; subject: string; body: string; fromEmail: string; fromName: string | null;
   category: string; status: string; priority: string; receivedAt: string;
@@ -35,12 +36,20 @@ const Btn = ({ active, color = "indigo", onClick, children }: { active: boolean;
   );
 };
 
+function formatBytes(b: number) {
+  if (b < 1024) return `${b}B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)}KB`;
+  return `${(b / 1024 / 1024).toFixed(1)}MB`;
+}
+
 function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusChange: () => void }) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [body, setBody] = useState("");
   const [isInternal, setIsInternal] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchReplies = useCallback(async () => {
     const res = await fetch(`/api/tickets/${ticketId}/replies`);
@@ -50,16 +59,28 @@ function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusCh
   useEffect(() => { fetchReplies(); }, [fetchReplies]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [replies]);
 
+  const removeFile = (i: number) => setFiles(f => f.filter((_, idx) => idx !== i));
+
   const send = async () => {
-    if (!body.trim()) return;
+    if (!body.trim() && files.length === 0) return;
     setSending(true);
+
+    const uploaded: Attachment[] = [];
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) uploaded.push(await res.json());
+    }
+
     await fetch(`/api/tickets/${ticketId}/replies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, isInternal }),
+      body: JSON.stringify({ body, isInternal, attachments: uploaded }),
     });
     setSending(false);
     setBody("");
+    setFiles([]);
     fetchReplies();
     if (!isInternal) onStatusChange();
   };
@@ -87,7 +108,19 @@ function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusCh
                     {new Date(r.createdAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
-                <p className="text-slate-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">{r.body}</p>
+                {r.body && <p className="text-slate-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">{r.body}</p>}
+                {r.attachments?.map((att, i) => att.type.startsWith("image/") ? (
+                  <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="block mt-1.5">
+                    <img src={att.url} alt={att.name} className="max-h-40 rounded-xl border border-slate-200 dark:border-gray-700 object-contain" />
+                  </a>
+                ) : (
+                  <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 mt-1.5 text-xs bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 rounded-lg px-2.5 py-1.5 transition-colors text-slate-600 dark:text-gray-300">
+                    <span>📄</span>
+                    <span className="truncate max-w-[200px]">{att.name}</span>
+                    <span className="shrink-0 text-slate-400 dark:text-gray-500">{formatBytes(att.size)}</span>
+                  </a>
+                ))}
               </div>
             </div>
           ))}
@@ -104,6 +137,30 @@ function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusCh
           className="w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-none"
           onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send(); }}
         />
+
+        {/* File previews */}
+        {files.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {files.map((f, i) => (
+              <div key={i} className="relative group">
+                {f.type.startsWith("image/") ? (
+                  <img src={URL.createObjectURL(f)} alt={f.name}
+                    className="h-12 w-12 object-cover rounded-lg border border-slate-200 dark:border-gray-700" />
+                ) : (
+                  <div className="h-12 w-12 rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-0.5 px-1">
+                    <span className="text-lg">📄</span>
+                    <span className="text-[7px] text-slate-400 text-center leading-tight line-clamp-2">{f.name}</span>
+                  </div>
+                )}
+                <button onClick={() => removeFile(i)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-500 dark:text-gray-500 select-none">
             <div
@@ -115,8 +172,22 @@ function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusCh
             İç Not
           </label>
           <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1 text-xs text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            📎 {files.length > 0 ? `${files.length} dosya` : "Dosya ekle"}
+          </button>
+          <input ref={fileRef} type="file" multiple
+            accept="image/*,application/pdf,.doc,.docx,.xlsx,.zip,.txt"
+            className="hidden"
+            onChange={e => {
+              const picked = Array.from(e.target.files ?? []);
+              setFiles(prev => [...prev, ...picked].slice(0, 5));
+              e.target.value = "";
+            }}
+          />
+          <button
             onClick={send}
-            disabled={sending || !body.trim()}
+            disabled={sending || (!body.trim() && files.length === 0)}
             className={`ml-auto px-4 py-1.5 text-xs font-semibold rounded-xl transition-all disabled:opacity-40 ${isInternal ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20"}`}
           >
             {sending ? "Gönderiliyor..." : isInternal ? "İç Not Ekle" : "Yanıtla"}

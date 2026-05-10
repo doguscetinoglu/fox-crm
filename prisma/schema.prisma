@@ -68,9 +68,10 @@ model TicketReply {
   ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   userId     Int?
   user       User?    @relation(fields: [userId], references: [id])
-  body       String
-  isInternal Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  body        String
+  isInternal  Boolean  @default(false)
+  attachments String?  @default("[]")
+  createdAt   DateTime @default(now())
 
   @@map("ticket_replies")
 }
