@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
   if (file.size > MAX_SIZE) return NextResponse.json({ error: "Dosya 10 MB'dan büyük olamaz" }, { status: 400 });
   if (!ALLOWED_TYPES.includes(file.type)) return NextResponse.json({ error: "Desteklenmeyen dosya tipi" }, { status: 400 });
 
-  const blob = await put(`ticket-replies/${Date.now()}-${file.name}`, file, { access: "public" });
-
-  return NextResponse.json({
-    url: blob.url,
-    name: file.name,
-    size: file.size,
-    type: file.type,
-  });
+  try {
+    const blob = await put(`ticket-replies/${Date.now()}-${file.name}`, file, { access: "public" });
+    return NextResponse.json({ url: blob.url, name: file.name, size: file.size, type: file.type });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Upload error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
