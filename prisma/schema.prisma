@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  isAdmin   Boolean  @default(false)
+  role      String   @default("Agent")
+  color     String   @default("indigo")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  tickets   Ticket[]
+
+  @@map("users")
+}
+
+model Customer {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String?
+  company      String?
+  phone        String?
+  notes        String?
+  password     String?
+  monthlyPrice Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tickets      Ticket[]
+
+  @@map("customers")
+}
+
+model Ticket {
+  id         Int       @id @default(autoincrement())
+  subject    String
+  body       String
+  fromEmail  String
+  fromName   String?
+  category   String    @default("Genel")
+  status     String    @default("Yeni")
+  assigneeId Int?
+  assignee   User?     @relation(fields: [assigneeId], references: [id])
+  customerId Int?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  priority   String    @default("Normal")
+  receivedAt DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("tickets")
+}
