@@ -61,6 +61,16 @@ function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusCh
 
   const removeFile = (i: number) => setFiles(f => f.filter((_, idx) => idx !== i));
 
+  const deleteAttachment = async (replyId: number, atts: Attachment[], idx: number) => {
+    const updated = atts.filter((_, i) => i !== idx);
+    const res = await fetch(`/api/tickets/${ticketId}/replies/${replyId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attachments: updated }),
+    });
+    if (res.ok) fetchReplies();
+  };
+
   const send = async () => {
     if (!body.trim() && files.length === 0) return;
     setSending(true);
@@ -109,18 +119,36 @@ function ReplyPanel({ ticketId, onStatusChange }: { ticketId: number; onStatusCh
                   </span>
                 </div>
                 {r.body && <p className="text-slate-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">{r.body}</p>}
-                {r.attachments?.map((att, i) => att.type.startsWith("image/") ? (
-                  <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="block mt-1.5">
-                    <img src={att.url} alt={att.name} className="max-h-40 rounded-xl border border-slate-200 dark:border-gray-700 object-contain" />
-                  </a>
-                ) : (
-                  <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 mt-1.5 text-xs bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 rounded-lg px-2.5 py-1.5 transition-colors text-slate-600 dark:text-gray-300">
-                    <span>📄</span>
-                    <span className="truncate max-w-[200px]">{att.name}</span>
-                    <span className="shrink-0 text-slate-400 dark:text-gray-500">{formatBytes(att.size)}</span>
-                  </a>
-                ))}
+                {r.attachments?.map((att, i) => {
+                  const delBtn = (
+                    <button
+                      onClick={() => deleteAttachment(r.id, r.attachments, i)}
+                      title="Dosyayı kaldır"
+                      className="ml-auto shrink-0 text-slate-300 dark:text-gray-600 hover:text-red-500 transition-colors text-base leading-none">
+                      ×
+                    </button>
+                  );
+                  return att.type.startsWith("image/") ? (
+                    <div key={i} className="relative inline-block mt-1.5 group">
+                      <a href={att.url} target="_blank" rel="noopener noreferrer">
+                        <img src={att.url} alt={att.name} className="max-h-40 rounded-xl border border-slate-200 dark:border-gray-700 object-contain" />
+                      </a>
+                      <button
+                        onClick={() => deleteAttachment(r.id, r.attachments, i)}
+                        title="Dosyayı kaldır"
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div key={i} className="flex items-center gap-1.5 mt-1.5 text-xs bg-slate-100 dark:bg-gray-700 rounded-lg px-2.5 py-1.5 text-slate-600 dark:text-gray-300">
+                      <span>📄</span>
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="truncate max-w-[180px] hover:underline">{att.name}</a>
+                      <span className="shrink-0 text-slate-400 dark:text-gray-500">{formatBytes(att.size)}</span>
+                      {delBtn}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

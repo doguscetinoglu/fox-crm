@@ -4,16 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 const ResponsiveContainer = dynamic(() => import("recharts").then(m => m.ResponsiveContainer), { ssr: false });
-const PieChart           = dynamic(() => import("recharts").then(m => m.PieChart), { ssr: false });
-const Pie                = dynamic(() => import("recharts").then(m => m.Pie), { ssr: false });
-const Cell               = dynamic(() => import("recharts").then(m => m.Cell), { ssr: false });
-const Tooltip            = dynamic(() => import("recharts").then(m => m.Tooltip), { ssr: false });
-const Legend             = dynamic(() => import("recharts").then(m => m.Legend), { ssr: false });
 const BarChart           = dynamic(() => import("recharts").then(m => m.BarChart), { ssr: false });
 const Bar                = dynamic(() => import("recharts").then(m => m.Bar), { ssr: false });
 const XAxis              = dynamic(() => import("recharts").then(m => m.XAxis), { ssr: false });
 const YAxis              = dynamic(() => import("recharts").then(m => m.YAxis), { ssr: false });
 const CartesianGrid      = dynamic(() => import("recharts").then(m => m.CartesianGrid), { ssr: false });
+const Tooltip            = dynamic(() => import("recharts").then(m => m.Tooltip), { ssr: false });
+const Legend             = dynamic(() => import("recharts").then(m => m.Legend), { ssr: false });
 
 interface ReportData {
   totalTickets: number;
@@ -52,6 +49,118 @@ const tooltipStyle = {
   padding: "8px 12px",
 };
 
+// ── Custom SVG Donut Chart ──────────────────────────────────────────────────
+function DonutChart({
+  data,
+  getColor,
+}: {
+  data: { name: string; value: number }[];
+  getColor: (name: string, i: number) => string;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const nonZero = data.filter(d => d.value > 0);
+  const total = nonZero.reduce((s, d) => s + d.value, 0);
+
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[200px]">
+        <div className="text-4xl mb-2 opacity-30">📊</div>
+        <p className="text-sm text-slate-400 dark:text-gray-600">Veri yok</p>
+      </div>
+    );
+  }
+
+  const size = 160;
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = size * 0.44;
+  const innerR = size * 0.28;
+  const gapAngle = nonZero.length > 1 ? 0.04 : 0;
+  const totalGap = gapAngle * nonZero.length;
+
+  let angle = -Math.PI / 2;
+  const arcs = nonZero.map((d, i) => {
+    const sweep = (d.value / total) * (2 * Math.PI - totalGap);
+    const sa = angle + gapAngle / 2;
+    angle += sweep + gapAngle;
+    const ea = sa + sweep;
+    const large = sweep > Math.PI ? 1 : 0;
+    const path = [
+      `M ${(cx + outerR * Math.cos(sa)).toFixed(2)} ${(cy + outerR * Math.sin(sa)).toFixed(2)}`,
+      `A ${outerR} ${outerR} 0 ${large} 1 ${(cx + outerR * Math.cos(ea)).toFixed(2)} ${(cy + outerR * Math.sin(ea)).toFixed(2)}`,
+      `L ${(cx + innerR * Math.cos(ea)).toFixed(2)} ${(cy + innerR * Math.sin(ea)).toFixed(2)}`,
+      `A ${innerR} ${innerR} 0 ${large} 0 ${(cx + innerR * Math.cos(sa)).toFixed(2)} ${(cy + innerR * Math.sin(sa)).toFixed(2)}`,
+      "Z",
+    ].join(" ");
+    const color = getColor(d.name, i);
+    const pct = Math.round((d.value / total) * 100);
+    return { ...d, path, color, pct };
+  });
+
+  const active = hovered !== null ? arcs[hovered] : null;
+
+  return (
+    <div className="flex items-center gap-5">
+      {/* SVG */}
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} style={{ overflow: "visible" }}>
+          {arcs.map((arc, i) => (
+            <path
+              key={i}
+              d={arc.path}
+              fill={arc.color}
+              style={{
+                opacity: hovered === null || hovered === i ? 1 : 0.35,
+                transition: "opacity 0.15s, transform 0.15s",
+                transformOrigin: `${cx}px ${cy}px`,
+                transform: hovered === i ? "scale(1.04)" : "scale(1)",
+                cursor: "pointer",
+              }}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+            />
+          ))}
+        </svg>
+        {/* Center label */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+          <p className="text-xl font-bold text-slate-900 dark:text-gray-100 leading-none">
+            {active ? active.value : total}
+          </p>
+          <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-0.5">
+            {active ? `%${active.pct}` : "toplam"}
+          </p>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+        {arcs.map((arc, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 cursor-default"
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+          >
+            <div
+              className="w-2 h-2 rounded-full shrink-0 transition-transform"
+              style={{
+                background: arc.color,
+                transform: hovered === i ? "scale(1.4)" : "scale(1)",
+              }}
+            />
+            <span className={`text-xs truncate flex-1 transition-colors ${hovered === i ? "text-slate-900 dark:text-gray-100 font-medium" : "text-slate-500 dark:text-gray-400"}`}>
+              {arc.name}
+            </span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-gray-300 shrink-0">{arc.value}</span>
+            <span className="text-[10px] text-slate-400 dark:text-gray-600 w-7 text-right shrink-0">%{arc.pct}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function KpiCard({ label, value, sub, color = "indigo" }: { label: string; value: string | number; sub?: string; color?: string }) {
   const gradients: Record<string, string> = {
     indigo: "from-indigo-500 to-violet-600",
@@ -87,7 +196,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
       {label && <p className="font-semibold mb-1">{label}</p>}
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: p.fill }} />
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: p.fill }} />
           <span>{p.name || "Sayı"}: <strong>{p.value}</strong></span>
         </div>
       ))}
@@ -112,8 +221,8 @@ export default function RaporlarPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const Skeleton = () => (
-    <div className="h-[220px] bg-slate-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+  const Skeleton = ({ h = 220 }: { h?: number }) => (
+    <div className="bg-slate-100 dark:bg-gray-800 rounded-xl animate-pulse" style={{ height: h }} />
   );
 
   return (
@@ -149,53 +258,32 @@ export default function RaporlarPage() {
         <KpiCard label="Çözüm Oranı" value={`%${data?.resolvedPct ?? 0}`} sub="kapalı / toplam" color="rose" />
       </div>
 
-      {/* Pie Charts Row */}
+      {/* Pie Charts Row — custom SVG donut charts */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ChartCard title="Durum Dağılımı">
           {loading ? <Skeleton /> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={data?.byStatus ?? []} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" nameKey="name">
-                  {(data?.byStatus ?? []).map((entry, i) => (
-                    <Cell key={i} fill={STATUS_COLORS[entry.name] ?? CAT_COLORS[i % CAT_COLORS.length]} strokeWidth={0} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px", color: "#94a3b8" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            <DonutChart
+              data={data?.byStatus ?? []}
+              getColor={(name) => STATUS_COLORS[name] ?? CAT_COLORS[0]}
+            />
           )}
         </ChartCard>
 
         <ChartCard title="Kategori Dağılımı">
           {loading ? <Skeleton /> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={data?.byCategory ?? []} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" nameKey="name">
-                  {(data?.byCategory ?? []).map((_, i) => (
-                    <Cell key={i} fill={CAT_COLORS[i % CAT_COLORS.length]} strokeWidth={0} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px", color: "#94a3b8" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            <DonutChart
+              data={data?.byCategory ?? []}
+              getColor={(_, i) => CAT_COLORS[i % CAT_COLORS.length]}
+            />
           )}
         </ChartCard>
 
         <ChartCard title="Öncelik Dağılımı">
           {loading ? <Skeleton /> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={data?.byPriority ?? []} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" nameKey="name">
-                  {(data?.byPriority ?? []).map((entry, i) => (
-                    <Cell key={i} fill={PRIORITY_COLORS[entry.name] ?? CAT_COLORS[i % CAT_COLORS.length]} strokeWidth={0} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px", color: "#94a3b8" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            <DonutChart
+              data={data?.byPriority ?? []}
+              getColor={(name) => PRIORITY_COLORS[name] ?? CAT_COLORS[0]}
+            />
           )}
         </ChartCard>
       </div>
@@ -203,13 +291,13 @@ export default function RaporlarPage() {
       {/* Trend Chart */}
       <ChartCard title={`Ticket Trendi — Son ${days} Gün`}>
         {loading ? (
-          <div className="h-[260px] bg-slate-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+          <Skeleton h={260} />
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data?.trendData ?? []} barSize={days > 30 ? 20 : 12} margin={{ left: -10, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:[&_line]:stroke-gray-800" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(99,102,241,0.08)" }} />
               <Bar dataKey="count" name="Ticket" fill="#6366f1" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -223,8 +311,8 @@ export default function RaporlarPage() {
           {loading ? <Skeleton /> : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={data?.agentPerf ?? []} layout="vertical" barSize={10} margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:[&_line]:stroke-gray-800" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={60} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(99,102,241,0.08)" }} />
                 <Bar dataKey="resolved" name="Çözülen" fill="#10b981" radius={[0, 6, 6, 0]} />
@@ -239,9 +327,9 @@ export default function RaporlarPage() {
           {loading ? <Skeleton /> : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={(data?.hourlyData ?? []).filter((_, i) => i % 2 === 0)} barSize={10} margin={{ left: -10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:[&_line]:stroke-gray-800" vertical={false} />
                 <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(245,158,11,0.08)" }} />
                 <Bar dataKey="count" name="Ticket" fill="#f59e0b" radius={[6, 6, 0, 0]} />
               </BarChart>
