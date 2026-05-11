@@ -54,6 +54,7 @@ export type TicketMinAggregateOutputType = {
   source: string | null
   telegramChatId: string | null
   telegramMessageId: number | null
+  emailMessageId: string | null
   receivedAt: Date | null
   updatedAt: Date | null
 }
@@ -72,6 +73,7 @@ export type TicketMaxAggregateOutputType = {
   source: string | null
   telegramChatId: string | null
   telegramMessageId: number | null
+  emailMessageId: string | null
   receivedAt: Date | null
   updatedAt: Date | null
 }
@@ -90,6 +92,7 @@ export type TicketCountAggregateOutputType = {
   source: number
   telegramChatId: number
   telegramMessageId: number
+  emailMessageId: number
   receivedAt: number
   updatedAt: number
   _all: number
@@ -124,6 +127,7 @@ export type TicketMinAggregateInputType = {
   source?: true
   telegramChatId?: true
   telegramMessageId?: true
+  emailMessageId?: true
   receivedAt?: true
   updatedAt?: true
 }
@@ -142,6 +146,7 @@ export type TicketMaxAggregateInputType = {
   source?: true
   telegramChatId?: true
   telegramMessageId?: true
+  emailMessageId?: true
   receivedAt?: true
   updatedAt?: true
 }
@@ -160,6 +165,7 @@ export type TicketCountAggregateInputType = {
   source?: true
   telegramChatId?: true
   telegramMessageId?: true
+  emailMessageId?: true
   receivedAt?: true
   updatedAt?: true
   _all?: true
@@ -265,6 +271,7 @@ export type TicketGroupByOutputType = {
   source: string | null
   telegramChatId: string | null
   telegramMessageId: number | null
+  emailMessageId: string | null
   receivedAt: Date
   updatedAt: Date
   _count: TicketCountAggregateOutputType | null
@@ -306,6 +313,7 @@ export type TicketWhereInput = {
   source?: Prisma.StringNullableFilter<"Ticket"> | string | null
   telegramChatId?: Prisma.StringNullableFilter<"Ticket"> | string | null
   telegramMessageId?: Prisma.IntNullableFilter<"Ticket"> | number | null
+  emailMessageId?: Prisma.StringNullableFilter<"Ticket"> | string | null
   receivedAt?: Prisma.DateTimeFilter<"Ticket"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Ticket"> | Date | string
   assignee?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
@@ -327,6 +335,7 @@ export type TicketOrderByWithRelationInput = {
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   telegramChatId?: Prisma.SortOrderInput | Prisma.SortOrder
   telegramMessageId?: Prisma.SortOrderInput | Prisma.SortOrder
+  emailMessageId?: Prisma.SortOrderInput | Prisma.SortOrder
   receivedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   assignee?: Prisma.UserOrderByWithRelationInput
@@ -337,6 +346,7 @@ export type TicketOrderByWithRelationInput = {
 export type TicketWhereUniqueInput = Prisma.AtLeast<{
   id?: number
   telegramMessageId?: number
+  emailMessageId?: string
   AND?: Prisma.TicketWhereInput | Prisma.TicketWhereInput[]
   OR?: Prisma.TicketWhereInput[]
   NOT?: Prisma.TicketWhereInput | Prisma.TicketWhereInput[]
@@ -356,7 +366,7 @@ export type TicketWhereUniqueInput = Prisma.AtLeast<{
   assignee?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   customer?: Prisma.XOR<Prisma.CustomerNullableScalarRelationFilter, Prisma.CustomerWhereInput> | null
   replies?: Prisma.TicketReplyListRelationFilter
-}, "id" | "telegramMessageId">
+}, "id" | "telegramMessageId" | "emailMessageId">
 
 export type TicketOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -372,6 +382,7 @@ export type TicketOrderByWithAggregationInput = {
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   telegramChatId?: Prisma.SortOrderInput | Prisma.SortOrder
   telegramMessageId?: Prisma.SortOrderInput | Prisma.SortOrder
+  emailMessageId?: Prisma.SortOrderInput | Prisma.SortOrder
   receivedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.TicketCountOrderByAggregateInput
@@ -398,6 +409,7 @@ export type TicketScalarWhereWithAggregatesInput = {
   source?: Prisma.StringNullableWithAggregatesFilter<"Ticket"> | string | null
   telegramChatId?: Prisma.StringNullableWithAggregatesFilter<"Ticket"> | string | null
   telegramMessageId?: Prisma.IntNullableWithAggregatesFilter<"Ticket"> | number | null
+  emailMessageId?: Prisma.StringNullableWithAggregatesFilter<"Ticket"> | string | null
   receivedAt?: Prisma.DateTimeWithAggregatesFilter<"Ticket"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Ticket"> | Date | string
 }
@@ -413,6 +425,7 @@ export type TicketCreateInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   assignee?: Prisma.UserCreateNestedOneWithoutTicketsInput
@@ -434,6 +447,7 @@ export type TicketUncheckedCreateInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   replies?: Prisma.TicketReplyUncheckedCreateNestedManyWithoutTicketInput
@@ -450,6 +464,7 @@ export type TicketUpdateInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   assignee?: Prisma.UserUpdateOneWithoutTicketsNestedInput
@@ -471,6 +486,7 @@ export type TicketUncheckedUpdateInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replies?: Prisma.TicketReplyUncheckedUpdateManyWithoutTicketNestedInput
@@ -490,6 +506,7 @@ export type TicketCreateManyInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -505,6 +522,7 @@ export type TicketUpdateManyMutationInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -523,6 +541,7 @@ export type TicketUncheckedUpdateManyInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -551,6 +570,7 @@ export type TicketCountOrderByAggregateInput = {
   source?: Prisma.SortOrder
   telegramChatId?: Prisma.SortOrder
   telegramMessageId?: Prisma.SortOrder
+  emailMessageId?: Prisma.SortOrder
   receivedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -576,6 +596,7 @@ export type TicketMaxOrderByAggregateInput = {
   source?: Prisma.SortOrder
   telegramChatId?: Prisma.SortOrder
   telegramMessageId?: Prisma.SortOrder
+  emailMessageId?: Prisma.SortOrder
   receivedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -594,6 +615,7 @@ export type TicketMinOrderByAggregateInput = {
   source?: Prisma.SortOrder
   telegramChatId?: Prisma.SortOrder
   telegramMessageId?: Prisma.SortOrder
+  emailMessageId?: Prisma.SortOrder
   receivedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -727,6 +749,7 @@ export type TicketCreateWithoutAssigneeInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   customer?: Prisma.CustomerCreateNestedOneWithoutTicketsInput
@@ -746,6 +769,7 @@ export type TicketUncheckedCreateWithoutAssigneeInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   replies?: Prisma.TicketReplyUncheckedCreateNestedManyWithoutTicketInput
@@ -794,6 +818,7 @@ export type TicketScalarWhereInput = {
   source?: Prisma.StringNullableFilter<"Ticket"> | string | null
   telegramChatId?: Prisma.StringNullableFilter<"Ticket"> | string | null
   telegramMessageId?: Prisma.IntNullableFilter<"Ticket"> | number | null
+  emailMessageId?: Prisma.StringNullableFilter<"Ticket"> | string | null
   receivedAt?: Prisma.DateTimeFilter<"Ticket"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Ticket"> | Date | string
 }
@@ -809,6 +834,7 @@ export type TicketCreateWithoutCustomerInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   assignee?: Prisma.UserCreateNestedOneWithoutTicketsInput
@@ -828,6 +854,7 @@ export type TicketUncheckedCreateWithoutCustomerInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   replies?: Prisma.TicketReplyUncheckedCreateNestedManyWithoutTicketInput
@@ -870,6 +897,7 @@ export type TicketCreateWithoutRepliesInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
   assignee?: Prisma.UserCreateNestedOneWithoutTicketsInput
@@ -890,6 +918,7 @@ export type TicketUncheckedCreateWithoutRepliesInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -921,6 +950,7 @@ export type TicketUpdateWithoutRepliesInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   assignee?: Prisma.UserUpdateOneWithoutTicketsNestedInput
@@ -941,6 +971,7 @@ export type TicketUncheckedUpdateWithoutRepliesInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -958,6 +989,7 @@ export type TicketCreateManyAssigneeInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -973,6 +1005,7 @@ export type TicketUpdateWithoutAssigneeInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneWithoutTicketsNestedInput
@@ -992,6 +1025,7 @@ export type TicketUncheckedUpdateWithoutAssigneeInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replies?: Prisma.TicketReplyUncheckedUpdateManyWithoutTicketNestedInput
@@ -1010,6 +1044,7 @@ export type TicketUncheckedUpdateManyWithoutAssigneeInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1027,6 +1062,7 @@ export type TicketCreateManyCustomerInput = {
   source?: string | null
   telegramChatId?: string | null
   telegramMessageId?: number | null
+  emailMessageId?: string | null
   receivedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1042,6 +1078,7 @@ export type TicketUpdateWithoutCustomerInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   assignee?: Prisma.UserUpdateOneWithoutTicketsNestedInput
@@ -1061,6 +1098,7 @@ export type TicketUncheckedUpdateWithoutCustomerInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replies?: Prisma.TicketReplyUncheckedUpdateManyWithoutTicketNestedInput
@@ -1079,6 +1117,7 @@ export type TicketUncheckedUpdateManyWithoutCustomerInput = {
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   telegramMessageId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  emailMessageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receivedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1128,6 +1167,7 @@ export type TicketSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   source?: boolean
   telegramChatId?: boolean
   telegramMessageId?: boolean
+  emailMessageId?: boolean
   receivedAt?: boolean
   updatedAt?: boolean
   assignee?: boolean | Prisma.Ticket$assigneeArgs<ExtArgs>
@@ -1150,6 +1190,7 @@ export type TicketSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   source?: boolean
   telegramChatId?: boolean
   telegramMessageId?: boolean
+  emailMessageId?: boolean
   receivedAt?: boolean
   updatedAt?: boolean
   assignee?: boolean | Prisma.Ticket$assigneeArgs<ExtArgs>
@@ -1170,6 +1211,7 @@ export type TicketSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   source?: boolean
   telegramChatId?: boolean
   telegramMessageId?: boolean
+  emailMessageId?: boolean
   receivedAt?: boolean
   updatedAt?: boolean
   assignee?: boolean | Prisma.Ticket$assigneeArgs<ExtArgs>
@@ -1190,11 +1232,12 @@ export type TicketSelectScalar = {
   source?: boolean
   telegramChatId?: boolean
   telegramMessageId?: boolean
+  emailMessageId?: boolean
   receivedAt?: boolean
   updatedAt?: boolean
 }
 
-export type TicketOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "subject" | "body" | "fromEmail" | "fromName" | "category" | "status" | "assigneeId" | "customerId" | "priority" | "source" | "telegramChatId" | "telegramMessageId" | "receivedAt" | "updatedAt", ExtArgs["result"]["ticket"]>
+export type TicketOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "subject" | "body" | "fromEmail" | "fromName" | "category" | "status" | "assigneeId" | "customerId" | "priority" | "source" | "telegramChatId" | "telegramMessageId" | "emailMessageId" | "receivedAt" | "updatedAt", ExtArgs["result"]["ticket"]>
 export type TicketInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   assignee?: boolean | Prisma.Ticket$assigneeArgs<ExtArgs>
   customer?: boolean | Prisma.Ticket$customerArgs<ExtArgs>
@@ -1231,6 +1274,7 @@ export type $TicketPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     source: string | null
     telegramChatId: string | null
     telegramMessageId: number | null
+    emailMessageId: string | null
     receivedAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["ticket"]>
@@ -1672,6 +1716,7 @@ export interface TicketFieldRefs {
   readonly source: Prisma.FieldRef<"Ticket", 'String'>
   readonly telegramChatId: Prisma.FieldRef<"Ticket", 'String'>
   readonly telegramMessageId: Prisma.FieldRef<"Ticket", 'Int'>
+  readonly emailMessageId: Prisma.FieldRef<"Ticket", 'String'>
   readonly receivedAt: Prisma.FieldRef<"Ticket", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Ticket", 'DateTime'>
 }

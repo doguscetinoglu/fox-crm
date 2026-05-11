@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { sendTelegramMessage, replyMessage } from "@/lib/telegram";
+import { sendReplyEmail } from "@/lib/email";
 
 interface Attachment { url: string; name: string; size: number; type: string; }
 
@@ -50,12 +51,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { status: isInternal ? undefined : "Yanıtlandı" },
     });
 
-    if (!isInternal && ticket.telegramChatId) {
+    if (!isInternal) {
       const senderName = reply.user?.name ?? "Destek Ekibi";
-      await sendTelegramMessage(
-        ticket.telegramChatId,
-        replyMessage(ticket.id, ticket.subject, senderName, body?.trim() ?? "(Dosya eklendi)")
-      );
+
+      if (ticket.telegramChatId) {
+        await sendTelegramMessage(
+          ticket.telegramChatId,
+          replyMessage(ticket.id, ticket.subject, senderName, body?.trim() ?? "(Dosya eklendi)")
+        );
+      }
+
+      try {
+        await sendReplyEmail(
+          ticket.fromEmail,
+          ticket.id,
+          ticket.subject,
+          senderName,
+          body?.trim() ?? "",
+          (attachments ?? []) as Attachment[],
+        );
+      } catch (e) {
+        console.error("Reply email gönderilemedi:", e);
+      }
     }
   }
 

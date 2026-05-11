@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
-import { sendTelegramMessage } from "@/lib/telegram";
 import { sendTicketConfirmationEmail } from "@/lib/email";
 
 const CATEGORIES = ["Genel", "Teknik Destek", "Fatura", "Öneri", "Şikayet"];
@@ -40,9 +39,14 @@ Mesaj: ${body.substring(0, 500)}
   }
 }
 
+// Ticket ID'yi email konusundan çıkar: "[#42]", "#42", "[Ticket #42]" gibi pattern'lar
+function extractTicketId(subject: string): number | null {
+  const match = subject.match(/#(\d+)/);
+  return match ? parseInt(match[1]) : null;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // Webhook secret kontrolü (opsiyonel — WEBHOOK_SECRET set edilmişse zorunlu)
     const webhookSecret = process.env.WEBHOOK_SECRET;
     if (webhookSecret) {
       const incoming = req.headers.get("x-webhook-secret");
@@ -51,81 +55,78 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const body = await req.json();
-    const {
-      subject, body: emailBody, fromEmail, fromName,
-      category: rawCategory, priority: rawPriority, assigneeId,
-      source, telegramChatId, telegramMessageId,
-    } = body;
+    const { messageId, from, fromName, subject, body, inReplyTo } = await req.json();
 
-    if (!subject || !fromEmail) {
-      return NextResponse.json({ error: "subject ve fromEmail zorunludur" }, { status: 400 });
+    if (!from || !subject) {
+      return NextResponse.json({ error: "from ve subject zorunludur" }, { status: 400 });
     }
 
-    // Telegram duplicate kontrolü (NaN koruması ile)
-    const safeMsgId = telegramMessageId ? Number(telegramMessageId) : null;
-    const validMsgId = safeMsgId && !isNaN(safeMsgId) ? safeMsgId : null;
-    if (validMsgId) {
-      const existing = await prisma.ticket.findUnique({ where: { telegramMessageId: validMsgId } });
+    // Duplicate kontrolü
+    if (messageId) {
+      const existing = await prisma.ticket.findFirst({
+        where: { emailMessageId: messageId },
+      });
       if (existing) {
-        return NextResponse.json({ success: true, ticket: existing, duplicate: true }, { status: 200 });
+        return NextResponse.json({ success: true, duplicate: true, ticket: existing });
       }
     }
 
-    // AI kategorilendirme (sadece category/priority gönderilmemişse)
-    let category = rawCategory;
-    let priority = rawPriority;
-    if (!category || !priority) {
-      const ai = await aiClassify(subject, emailBody ?? "");
-      category = category ?? ai.category;
-      priority = priority ?? ai.priority;
+    // Ticket ID var mı kontrol et (yanıt mı, yeni ticket mi?)
+    const subjectTicketId = extractTicketId(subject ?? "");
+    const replyToTicketId = inReplyTo ? extractTicketId(inReplyTo) : null;
+    const linkedTicketId = subjectTicketId ?? replyToTicketId;
+
+    if (linkedTicketId) {
+      // Mevcut ticket'a yanıt olarak ekle
+      const ticket = await prisma.ticket.findUnique({ where: { id: linkedTicketId } });
+      if (ticket) {
+        const reply = await prisma.ticketReply.create({
+          data: {
+            ticketId: ticket.id,
+            userId: null,
+            body: body ?? "",
+            isInternal: false,
+            attachments: "[]",
+          },
+        });
+        return NextResponse.json({ success: true, reply }, { status: 201 });
+      }
     }
 
-    // Müşteriyi bul veya oluştur
+    // Yeni ticket oluştur
+    const { category, priority } = await aiClassify(subject, body ?? "");
+
     const customer = await prisma.customer.upsert({
-      where: { email: fromEmail },
+      where: { email: from },
       update: {},
-      create: { email: fromEmail, name: fromName ?? null },
+      create: { email: from, name: fromName ?? null },
     });
 
     const ticket = await prisma.ticket.create({
       data: {
         subject,
-        body: emailBody ?? "",
-        fromEmail,
+        body: body ?? "",
+        fromEmail: from,
         fromName: fromName ?? null,
         category,
-        status: "Yeni",
-        assigneeId: assigneeId ? Number(assigneeId) : null,
-        customerId: customer.id,
         priority,
-        source: source ?? "web",
-        telegramChatId: telegramChatId ? String(telegramChatId) : null,
-        telegramMessageId: validMsgId,
+        status: "Yeni",
+        source: "email",
+        customerId: customer.id,
+        emailMessageId: messageId ?? null,
       },
-      include: { assignee: true, customer: true },
     });
 
-    // Telegram'a "alındı" bildirimi
-    if (telegramChatId) {
-      await sendTelegramMessage(
-        String(telegramChatId),
-        `✅ Destek talebiniz alındı!\n\n🎫 Ticket #${ticket.id}\n📌 ${subject}\n🏷️ ${category} · ${priority}\n\nEkibimiz en kısa sürede dönüş yapacak.`
-      );
-    }
-
-    // Email "alındı" bildirimi (Telegram'dan gelmediyse)
-    if (source !== "telegram") {
-      try {
-        await sendTicketConfirmationEmail(fromEmail, ticket.id, subject);
-      } catch (e) {
-        console.error("Confirmation email gönderilemedi:", e);
-      }
+    // Alındı bildirimi gönder
+    try {
+      await sendTicketConfirmationEmail(from, ticket.id, subject);
+    } catch (e) {
+      console.error("Confirmation email gönderilemedi:", e);
     }
 
     return NextResponse.json({ success: true, ticket }, { status: 201 });
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error("Email inbound error:", err);
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
   }
 }

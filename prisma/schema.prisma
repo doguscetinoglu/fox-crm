@@ -55,6 +55,7 @@ model Ticket {
   source            String?       @default("web")
   telegramChatId    String?
   telegramMessageId Int?          @unique
+  emailMessageId    String?       @unique
   receivedAt        DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   replies           TicketReply[]
