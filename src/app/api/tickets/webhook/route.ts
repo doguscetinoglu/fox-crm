@@ -81,13 +81,6 @@ export async function POST(req: NextRequest) {
       priority = priority ?? ai.priority;
     }
 
-    // Müşteriyi bul veya oluştur
-    const customer = await prisma.customer.upsert({
-      where: { email: fromEmail },
-      update: {},
-      create: { email: fromEmail, name: fromName ?? null },
-    });
-
     const ticket = await prisma.ticket.create({
       data: {
         subject,
@@ -97,7 +90,6 @@ export async function POST(req: NextRequest) {
         category,
         status: "Yeni",
         assigneeId: assigneeId ? Number(assigneeId) : null,
-        customerId: customer.id,
         priority,
         source: source ?? "web",
         telegramChatId: telegramChatId ? String(telegramChatId) : null,

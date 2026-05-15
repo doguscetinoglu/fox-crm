@@ -96,12 +96,6 @@ export async function POST(req: NextRequest) {
     // Yeni ticket oluştur
     const { category, priority } = await aiClassify(subject, body ?? "");
 
-    const customer = await prisma.customer.upsert({
-      where: { email: from },
-      update: {},
-      create: { email: from, name: fromName ?? null },
-    });
-
     const ticket = await prisma.ticket.create({
       data: {
         subject,
@@ -112,7 +106,6 @@ export async function POST(req: NextRequest) {
         priority,
         status: "Yeni",
         source: "email",
-        customerId: customer.id,
         emailMessageId: messageId ?? null,
       },
     });
