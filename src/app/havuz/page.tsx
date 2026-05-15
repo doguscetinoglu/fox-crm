@@ -169,8 +169,8 @@ export default function HavuzPage() {
                         </span>
                       </div>
                     </div>
-                    {t.body && (
-                      <p className={`text-sm text-slate-500 dark:text-gray-500 mt-2 ${expanded === t.id ? "whitespace-pre-wrap" : "line-clamp-2"}`}>{t.body}</p>
+                    {t.body && expanded !== t.id && (
+                      <p className="text-sm text-slate-500 dark:text-gray-500 mt-2 line-clamp-2">{t.body}</p>
                     )}
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <span className="text-xs bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-2 py-0.5 rounded-md">{t.category}</span>
@@ -186,6 +186,12 @@ export default function HavuzPage() {
               </div>
               {expanded === t.id && (
                 <div className="px-4 md:px-5 pb-5 border-t border-slate-100 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wider mb-2">Mail İçeriği</p>
+                    <p className="text-sm text-slate-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-gray-800/60 border border-slate-100 dark:border-gray-700/50 rounded-xl px-4 py-3">
+                      {t.body || "(İçerik yok)"}
+                    </p>
+                  </div>
                   <ReplyPanel ticketId={t.id} />
                 </div>
               )}
