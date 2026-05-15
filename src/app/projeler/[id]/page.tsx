@@ -1,0 +1,459 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+
+interface User { id: number; name: string; color: string; role: string; }
+interface Customer { id: number; name: string | null; company: string | null; email: string; }
+interface Task { id: number; title: string; description: string | null; status: string; assigneeId: number | null; assigneeType: string | null; dueDate: string | null; completedAt: string | null; }
+interface Step { id: number; name: string; order: number; status: string; tasks: Task[]; }
+interface Member { user: User; }
+interface Project {
+  id: number; name: string; description: string | null; status: string; createdAt: string;
+  customer: Customer | null; members: Member[]; steps: Step[];
+}
+interface Log { id: number; userName: string | null; action: string; createdAt: string; }
+interface Message { id: number; userName: string | null; userType: string; body: string; createdAt: string; }
+
+const STATUS_COLORS: Record<string, string> = {
+  "Beklemede":   "bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400",
+  "Devam Ediyor":"bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20",
+  "Tamamlandı":  "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20",
+};
+
+const AVATAR_BG: Record<string, string> = {
+  indigo:"bg-indigo-500", violet:"bg-violet-500", teal:"bg-teal-500",
+  orange:"bg-orange-500", rose:"bg-rose-500", sky:"bg-sky-500",
+};
+
+function calcProgress(steps: Step[]) {
+  const all = steps.flatMap(s => s.tasks);
+  if (!all.length) {
+    if (!steps.length) return 0;
+    return Math.round((steps.filter(s => s.status === "Tamamlandı").length / steps.length) * 100);
+  }
+  return Math.round((all.filter(t => t.status === "Tamamlandı").length / all.length) * 100);
+}
+
+export default function ProjeDetayPage() {
+  const { id } = useParams<{ id: string }>();
+  const [project, setProject] = useState<Project | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [customers, setCustomers] = useState<{ id: number; name: string | null }[]>([]);
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [tab, setTab] = useState<"tree" | "log" | "chat">("tree");
+  const [msgBody, setMsgBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [addStepName, setAddStepName] = useState("");
+  const [addingStep, setAddingStep] = useState(false);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const [taskForm, setTaskForm] = useState<{ stepId: number | null; title: string; assigneeId: string; assigneeType: string; dueDate: string }>({
+    stepId: null, title: "", assigneeId: "", assigneeType: "user", dueDate: "",
+  });
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  const fetchProject = useCallback(async () => {
+    const r = await fetch(`/api/projects/${id}`);
+    if (r.ok) setProject(await r.json());
+  }, [id]);
+
+  const fetchLogs = useCallback(async () => {
+    const r = await fetch(`/api/projects/${id}/logs`);
+    if (r.ok) setLogs(await r.json());
+  }, [id]);
+
+  const fetchMessages = useCallback(async () => {
+    const r = await fetch(`/api/projects/${id}/messages`);
+    if (r.ok) setMessages(await r.json());
+  }, [id]);
+
+  useEffect(() => {
+    fetchProject();
+    fetchLogs();
+    fetchMessages();
+    fetch("/api/users").then(r => r.json()).then(setUsers);
+    fetch("/api/customers").then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : []));
+  }, [fetchProject, fetchLogs, fetchMessages]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const updateTaskStatus = async (taskId: number, status: string) => {
+    await fetch(`/api/projects/${id}/tasks/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    fetchProject(); fetchLogs();
+  };
+
+  const addStep = async () => {
+    if (!addStepName.trim()) return;
+    setAddingStep(true);
+    await fetch(`/api/projects/${id}/steps`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: addStepName }),
+    });
+    setAddStepName(""); setAddingStep(false);
+    fetchProject(); fetchLogs();
+  };
+
+  const addTask = async () => {
+    if (!taskForm.title.trim() || !taskForm.stepId) return;
+    await fetch(`/api/projects/${id}/tasks/${taskForm.stepId}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: taskForm.title,
+        assigneeId: taskForm.assigneeId ? Number(taskForm.assigneeId) : null,
+        assigneeType: taskForm.assigneeType || null,
+        dueDate: taskForm.dueDate || null,
+      }),
+    });
+    setTaskForm({ stepId: null, title: "", assigneeId: "", assigneeType: "user", dueDate: "" });
+    fetchProject(); fetchLogs();
+  };
+
+  const sendMessage = async () => {
+    if (!msgBody.trim()) return;
+    setSending(true);
+    await fetch(`/api/projects/${id}/messages`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: msgBody }),
+    });
+    setMsgBody(""); setSending(false);
+    fetchMessages();
+  };
+
+  const exportFile = (type: string) => {
+    window.open(`/api/projects/${id}/export?type=${type}`, "_blank");
+  };
+
+  if (!project) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  const progress = calcProgress(project.steps);
+  const totalTasks = project.steps.flatMap(s => s.tasks).length;
+  const doneTasks = project.steps.flatMap(s => s.tasks).filter(t => t.status === "Tamamlandı").length;
+
+  return (
+    <div className="p-4 md:p-7 space-y-5 animate-fade-in">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-gray-600">
+        <Link href="/projeler" className="hover:text-indigo-600 transition-colors">Projeler</Link>
+        <span>/</span>
+        <span className="text-slate-700 dark:text-gray-300 font-medium truncate">{project.name}</span>
+      </div>
+
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 rounded-2xl p-6 text-white shadow-lg shadow-indigo-600/20">
+        <div className="flex flex-col md:flex-row md:items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1 flex-wrap">
+              <h1 className="text-2xl font-bold">{project.name}</h1>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${project.status === "Tamamlandı" ? "bg-emerald-400/20 text-emerald-200" : "bg-white/20 text-white"}`}>
+                {project.status}
+              </span>
+            </div>
+            {project.description && <p className="text-indigo-200 text-sm mb-3">{project.description}</p>}
+            <div className="flex flex-wrap gap-4 text-sm">
+              {project.customer && (
+                <span className="flex items-center gap-1.5 text-indigo-200">
+                  <span className="text-base">🏢</span> {project.customer.name}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5 text-indigo-200">
+                <span className="text-base">📅</span> {new Date(project.createdAt).toLocaleDateString("tr-TR")}
+              </span>
+              <span className="flex items-center gap-1.5 text-indigo-200">
+                <span className="text-base">✅</span> {doneTasks}/{totalTasks} görev
+              </span>
+            </div>
+          </div>
+
+          {/* Progress Ring */}
+          <div className="flex flex-col items-center shrink-0">
+            <div className="relative w-20 h-20">
+              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="8" />
+                <circle cx="40" cy="40" r="32" fill="none" stroke="white" strokeWidth="8"
+                  strokeDasharray={`${2 * Math.PI * 32}`}
+                  strokeDashoffset={`${2 * Math.PI * 32 * (1 - progress / 100)}`}
+                  strokeLinecap="round" className="transition-all duration-700" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-bold">{progress}%</span>
+              </div>
+            </div>
+            <span className="text-xs text-indigo-200 mt-1">İlerleme</span>
+          </div>
+        </div>
+
+        {/* Members */}
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
+          <span className="text-xs text-indigo-300">Ekip:</span>
+          <div className="flex -space-x-1.5">
+            {project.members.map(m => (
+              <div key={m.user.id} title={m.user.name}
+                className={`w-7 h-7 rounded-full border-2 border-indigo-600 flex items-center justify-center text-xs font-bold text-white ${AVATAR_BG[m.user.color] ?? "bg-slate-500"}`}>
+                {m.user.name[0]}
+              </div>
+            ))}
+          </div>
+
+          {/* Export */}
+          <div className="ml-auto flex gap-2">
+            <button onClick={() => exportFile("excel")}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-xl transition-all">
+              📊 Excel
+            </button>
+            <button onClick={() => exportFile("txt")}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-xl transition-all">
+              📄 Rapor
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Toplam Adım", value: project.steps.length, icon: "📋", color: "text-indigo-600 dark:text-indigo-400" },
+          { label: "Tamamlanan Adım", value: project.steps.filter(s => s.status === "Tamamlandı").length, icon: "✅", color: "text-emerald-600 dark:text-emerald-400" },
+          { label: "Toplam Görev", value: totalTasks, icon: "📌", color: "text-violet-600 dark:text-violet-400" },
+          { label: "Tamamlanan Görev", value: doneTasks, icon: "🎯", color: "text-teal-600 dark:text-teal-400" },
+        ].map(s => (
+          <div key={s.label} className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm">
+            <p className="text-xs text-slate-400 dark:text-gray-600 mb-1">{s.label}</p>
+            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            <span className="text-lg">{s.icon}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
+        {(["tree", "log", "chat"] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === t ? "bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 shadow-sm" : "text-slate-500 dark:text-gray-500 hover:text-slate-700"}`}>
+            {t === "tree" ? "🌳 Proje Ağacı" : t === "log" ? "📋 Aktivite" : "💬 Sohbet"}
+          </button>
+        ))}
+      </div>
+
+      {/* Tree Tab */}
+      {tab === "tree" && (
+        <div className="space-y-3">
+          {project.steps.map((step, si) => {
+            const isExp = expandedSteps.has(step.id);
+            const doneCount = step.tasks.filter(t => t.status === "Tamamlandı").length;
+            const stepProgress = step.tasks.length > 0 ? Math.round((doneCount / step.tasks.length) * 100) : (step.status === "Tamamlandı" ? 100 : 0);
+
+            return (
+              <div key={step.id} className={`bg-white dark:bg-gray-900 border rounded-2xl shadow-sm overflow-hidden transition-all ${step.status === "Tamamlandı" ? "border-emerald-200 dark:border-emerald-500/20" : step.status === "Devam Ediyor" ? "border-blue-200 dark:border-blue-500/20" : "border-slate-200 dark:border-gray-800"}`}>
+                {/* Step Header */}
+                <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => setExpandedSteps(prev => { const n = new Set(prev); n.has(step.id) ? n.delete(step.id) : n.add(step.id); return n; })}>
+                  {/* Step number */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${step.status === "Tamamlandı" ? "bg-emerald-500 text-white" : step.status === "Devam Ediyor" ? "bg-blue-500 text-white" : "bg-slate-100 dark:bg-gray-800 text-slate-400"}`}>
+                    {step.status === "Tamamlandı" ? "✓" : si + 1}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 dark:text-gray-100 text-sm">{step.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="h-1 w-24 bg-slate-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${stepProgress === 100 ? "bg-emerald-500" : "bg-blue-500"}`} style={{ width: `${stepProgress}%` }} />
+                      </div>
+                      <span className="text-xs text-slate-400 dark:text-gray-600">{doneCount}/{step.tasks.length} görev</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[step.status]}`}>{step.status}</span>
+                    <button onClick={() => setTaskForm({ stepId: step.id, title: "", assigneeId: "", assigneeType: "user", dueDate: "" })}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all">
+                      + Görev
+                    </button>
+                    <span className="text-slate-300 dark:text-gray-600 text-sm">{isExp ? "▲" : "▼"}</span>
+                  </div>
+                </div>
+
+                {/* Tasks */}
+                {isExp && (
+                  <div className="border-t border-slate-100 dark:border-gray-800 divide-y divide-slate-50 dark:divide-gray-800/60">
+                    {step.tasks.length === 0 && (
+                      <p className="px-6 py-4 text-sm text-slate-400 dark:text-gray-600 italic">Henüz görev yok</p>
+                    )}
+                    {step.tasks.map(task => {
+                      const assignee = task.assigneeType === "user"
+                        ? users.find(u => u.id === task.assigneeId)
+                        : null;
+                      const isOverdue = task.dueDate && task.status !== "Tamamlandı" && new Date(task.dueDate) < new Date();
+
+                      return (
+                        <div key={task.id} className={`flex items-center gap-3 px-6 py-3 hover:bg-slate-50 dark:hover:bg-gray-800/30 transition-colors ${task.status === "Tamamlandı" ? "opacity-60" : ""}`}>
+                          {/* Checkbox */}
+                          <button onClick={() => updateTaskStatus(task.id, task.status === "Tamamlandı" ? "Beklemede" : task.status === "Beklemede" ? "Devam Ediyor" : "Tamamlandı")}
+                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${task.status === "Tamamlandı" ? "bg-emerald-500 border-emerald-500 text-white" : task.status === "Devam Ediyor" ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10" : "border-slate-300 dark:border-gray-600 hover:border-indigo-400"}`}>
+                            {task.status === "Tamamlandı" && <span className="text-[10px]">✓</span>}
+                            {task.status === "Devam Ediyor" && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+                          </button>
+
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${task.status === "Tamamlandı" ? "line-through text-slate-400 dark:text-gray-600" : "text-slate-700 dark:text-gray-300"}`}>{task.title}</p>
+                            {task.description && <p className="text-xs text-slate-400 mt-0.5">{task.description}</p>}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isOverdue && <span className="text-[10px] font-semibold text-red-500 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md">GECİKMİŞ</span>}
+                            {task.dueDate && !isOverdue && (
+                              <span className="text-[11px] text-slate-400 dark:text-gray-600">{new Date(task.dueDate).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}</span>
+                            )}
+                            {assignee && (
+                              <div title={assignee.name} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${AVATAR_BG[assignee.color] ?? "bg-slate-500"}`}>
+                                {assignee.name[0]}
+                              </div>
+                            )}
+                            {task.assigneeType === "customer" && (
+                              <div title="Müşteri" className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-[10px] font-bold text-white">M</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Add Step */}
+          <div className="flex gap-2">
+            <input value={addStepName} onChange={e => setAddStepName(e.target.value)}
+              placeholder="Yeni adım adı..."
+              onKeyDown={e => e.key === "Enter" && addStep()}
+              className="flex-1 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-sm" />
+            <button onClick={addStep} disabled={addingStep || !addStepName.trim()}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40">
+              {addingStep ? "..." : "+ Adım"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Log Tab */}
+      {tab === "log" && (
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-700 dark:text-gray-300">Aktivite Logu ({logs.length})</p>
+            <button onClick={() => exportFile("excel")}
+              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">📊 Excel İndir</button>
+          </div>
+          <div className="divide-y divide-slate-50 dark:divide-gray-800/60 max-h-[60vh] overflow-y-auto">
+            {logs.length === 0 && <p className="py-12 text-center text-slate-400 dark:text-gray-600 text-sm">Log kaydı yok</p>}
+            {logs.map(log => (
+              <div key={log.id} className="flex items-start gap-3 px-5 py-3">
+                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-sm shrink-0 mt-0.5">⚡</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-700 dark:text-gray-300">{log.action}</p>
+                  <p className="text-xs text-slate-400 dark:text-gray-600 mt-0.5">{log.userName ?? "Sistem"} · {new Date(log.createdAt).toLocaleString("tr-TR")}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chat Tab */}
+      {tab === "chat" && (
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden flex flex-col" style={{ height: "60vh" }}>
+          <div className="p-4 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+            <p className="text-sm font-semibold text-slate-700 dark:text-gray-300">Proje Sohbeti</p>
+            <button onClick={() => exportFile("txt")}
+              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">📄 Sohbet Döküm</button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.length === 0 && (
+              <div className="flex items-center justify-center h-full text-slate-400 dark:text-gray-600 text-sm">Henüz mesaj yok</div>
+            )}
+            {messages.map(msg => {
+              const isCustomer = msg.userType === "customer";
+              return (
+                <div key={msg.id} className={`flex gap-3 ${isCustomer ? "" : "flex-row-reverse"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${isCustomer ? "bg-teal-500" : "bg-indigo-500"}`}>
+                    {(msg.userName ?? "?")[0].toUpperCase()}
+                  </div>
+                  <div className={`max-w-[70%] ${isCustomer ? "" : "items-end"} flex flex-col gap-0.5`}>
+                    <div className={`px-3 py-2 rounded-2xl text-sm ${isCustomer ? "bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-gray-200 rounded-tl-sm" : "bg-indigo-600 text-white rounded-tr-sm"}`}>
+                      {msg.body}
+                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-gray-600 px-1">
+                      {msg.userName ?? "?"} · {new Date(msg.createdAt).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={chatBottomRef} />
+          </div>
+
+          <div className="p-3 border-t border-slate-100 dark:border-gray-800 flex gap-2 shrink-0">
+            <input value={msgBody} onChange={e => setMsgBody(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
+              placeholder="Mesaj yaz..."
+              className="flex-1 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+            <button onClick={sendMessage} disabled={sending || !msgBody.trim()}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40">
+              Gönder
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Task Modal */}
+      {taskForm.stepId !== null && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setTaskForm(f => ({ ...f, stepId: null }))}>
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 mb-4">Görev Ekle</h3>
+            <div className="space-y-3">
+              <input value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Görev başlığı..."
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+
+              <select value={taskForm.assigneeType} onChange={e => setTaskForm(f => ({ ...f, assigneeType: e.target.value, assigneeId: "" }))}
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                <option value="user">Kullanıcı</option>
+                <option value="customer">Müşteri</option>
+              </select>
+
+              {taskForm.assigneeType === "user" ? (
+                <select value={taskForm.assigneeId} onChange={e => setTaskForm(f => ({ ...f, assigneeId: e.target.value }))}
+                  className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                  <option value="">Kullanıcı seç...</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              ) : (
+                <p className="text-xs text-slate-400 dark:text-gray-600 px-1">Görev müşteriye atanacak</p>
+              )}
+
+              <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setTaskForm(f => ({ ...f, stepId: null }))}
+                className="flex-1 py-2.5 text-sm text-slate-500 border border-slate-200 dark:border-gray-700 rounded-xl hover:text-slate-700 transition-colors">İptal</button>
+              <button onClick={addTask} disabled={!taskForm.title.trim()}
+                className="flex-1 py-2.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40">Ekle</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

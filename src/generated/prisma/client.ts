@@ -61,3 +61,33 @@ export type Ticket = Prisma.TicketModel
  * 
  */
 export type TicketReply = Prisma.TicketReplyModel
+/**
+ * Model Project
+ * 
+ */
+export type Project = Prisma.ProjectModel
+/**
+ * Model ProjectMember
+ * 
+ */
+export type ProjectMember = Prisma.ProjectMemberModel
+/**
+ * Model ProjectStep
+ * 
+ */
+export type ProjectStep = Prisma.ProjectStepModel
+/**
+ * Model ProjectTask
+ * 
+ */
+export type ProjectTask = Prisma.ProjectTaskModel
+/**
+ * Model ProjectLog
+ * 
+ */
+export type ProjectLog = Prisma.ProjectLogModel
+/**
+ * Model ProjectMessage
+ * 
+ */
+export type ProjectMessage = Prisma.ProjectMessageModel

@@ -54,7 +54,13 @@ export const ModelName = {
   User: 'User',
   Customer: 'Customer',
   Ticket: 'Ticket',
-  TicketReply: 'TicketReply'
+  TicketReply: 'TicketReply',
+  Project: 'Project',
+  ProjectMember: 'ProjectMember',
+  ProjectStep: 'ProjectStep',
+  ProjectTask: 'ProjectTask',
+  ProjectLog: 'ProjectLog',
+  ProjectMessage: 'ProjectMessage'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -137,6 +143,80 @@ export const TicketReplyScalarFieldEnum = {
 } as const
 
 export type TicketReplyScalarFieldEnum = (typeof TicketReplyScalarFieldEnum)[keyof typeof TicketReplyScalarFieldEnum]
+
+
+export const ProjectScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  status: 'status',
+  customerId: 'customerId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
+
+
+export const ProjectMemberScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId'
+} as const
+
+export type ProjectMemberScalarFieldEnum = (typeof ProjectMemberScalarFieldEnum)[keyof typeof ProjectMemberScalarFieldEnum]
+
+
+export const ProjectStepScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  name: 'name',
+  order: 'order',
+  status: 'status'
+} as const
+
+export type ProjectStepScalarFieldEnum = (typeof ProjectStepScalarFieldEnum)[keyof typeof ProjectStepScalarFieldEnum]
+
+
+export const ProjectTaskScalarFieldEnum = {
+  id: 'id',
+  stepId: 'stepId',
+  title: 'title',
+  description: 'description',
+  assigneeId: 'assigneeId',
+  assigneeType: 'assigneeType',
+  status: 'status',
+  dueDate: 'dueDate',
+  completedAt: 'completedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ProjectTaskScalarFieldEnum = (typeof ProjectTaskScalarFieldEnum)[keyof typeof ProjectTaskScalarFieldEnum]
+
+
+export const ProjectLogScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  userName: 'userName',
+  action: 'action',
+  createdAt: 'createdAt'
+} as const
+
+export type ProjectLogScalarFieldEnum = (typeof ProjectLogScalarFieldEnum)[keyof typeof ProjectLogScalarFieldEnum]
+
+
+export const ProjectMessageScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  userId: 'userId',
+  userName: 'userName',
+  userType: 'userType',
+  body: 'body',
+  createdAt: 'createdAt'
+} as const
+
+export type ProjectMessageScalarFieldEnum = (typeof ProjectMessageScalarFieldEnum)[keyof typeof ProjectMessageScalarFieldEnum]
 
 
 export const SortOrder = {

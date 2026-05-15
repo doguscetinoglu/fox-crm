@@ -17,8 +17,9 @@ model User {
   color     String   @default("indigo")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  tickets   Ticket[]
-  replies   TicketReply[]
+  tickets        Ticket[]
+  replies        TicketReply[]
+  projectMembers ProjectMember[]
 
   @@map("users")
 }
@@ -34,7 +35,8 @@ model Customer {
   monthlyPrice Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  tickets      Ticket[]
+  tickets   Ticket[]
+  projects  Project[]
 
   @@map("customers")
 }
@@ -75,4 +77,85 @@ model TicketReply {
   createdAt   DateTime @default(now())
 
   @@map("ticket_replies")
+}
+
+model Project {
+  id          Int             @id @default(autoincrement())
+  name        String
+  description String?
+  status      String          @default("Devam Ediyor")
+  customerId  Int?
+  customer    Customer?       @relation(fields: [customerId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  members     ProjectMember[]
+  steps       ProjectStep[]
+  logs        ProjectLog[]
+  messages    ProjectMessage[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model ProjectStep {
+  id        Int           @id @default(autoincrement())
+  projectId Int
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int           @default(0)
+  status    String        @default("Beklemede")
+  tasks     ProjectTask[]
+
+  @@map("project_steps")
+}
+
+model ProjectTask {
+  id           Int         @id @default(autoincrement())
+  stepId       Int
+  step         ProjectStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  assigneeId   Int?
+  assigneeType String?
+  status       String      @default("Beklemede")
+  dueDate      DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@map("project_tasks")
+}
+
+model ProjectLog {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    Int?
+  userName  String?
+  action    String
+  createdAt DateTime @default(now())
+
+  @@map("project_logs")
+}
+
+model ProjectMessage {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    Int?
+  userName  String?
+  userType  String   @default("user")
+  body      String
+  createdAt DateTime @default(now())
+
+  @@map("project_messages")
 }

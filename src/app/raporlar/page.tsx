@@ -25,6 +25,16 @@ interface ReportData {
   agentPerf: { name: string; total: number; resolved: number }[];
 }
 
+interface ProjectStats {
+  total: number;
+  devamEdiyor: number;
+  tamamlandi: number;
+  beklemede: number;
+  iptal: number;
+  avgProgress: number;
+  recentProjects: { id: number; name: string; status: string; progress: number; memberCount: number }[];
+}
+
 const STATUS_COLORS: Record<string, string> = {
   "Yeni": "#8b5cf6", "İnceleniyor": "#f59e0b", "Yanıtlandı": "#10b981", "Kapalı": "#6b7280",
 };
@@ -204,16 +214,48 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
   );
 };
 
+function calcProgress(steps: { status: string; tasks: { status: string }[] }[]) {
+  if (!steps.length) return 0;
+  const allTasks = steps.flatMap(s => s.tasks);
+  if (!allTasks.length) {
+    const done = steps.filter(s => s.status === "Tamamlandı").length;
+    return Math.round((done / steps.length) * 100);
+  }
+  const done = allTasks.filter(t => t.status === "Tamamlandı").length;
+  return Math.round((done / allTasks.length) * 100);
+}
+
 export default function RaporlarPage() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projStats, setProjStats] = useState<ProjectStats | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/raporlar?days=${days}`);
-      if (res.ok) setData(await res.json());
+      const [rRes, pRes] = await Promise.all([
+        fetch(`/api/raporlar?days=${days}`),
+        fetch("/api/projects"),
+      ]);
+      if (rRes.ok) setData(await rRes.json());
+      if (pRes.ok) {
+        const projects = await pRes.json() as { id: number; name: string; status: string; members: unknown[]; steps: { status: string; tasks: { status: string }[] }[] }[];
+        if (Array.isArray(projects)) {
+          const total = projects.length;
+          const devamEdiyor = projects.filter(p => p.status === "Devam Ediyor").length;
+          const tamamlandi = projects.filter(p => p.status === "Tamamlandı").length;
+          const beklemede  = projects.filter(p => p.status === "Beklemede").length;
+          const iptal      = projects.filter(p => p.status === "İptal").length;
+          const avgProgress = total > 0 ? Math.round(projects.reduce((s, p) => s + calcProgress(p.steps), 0) / total) : 0;
+          const recentProjects = projects.slice(0, 5).map(p => ({
+            id: p.id, name: p.name, status: p.status,
+            progress: calcProgress(p.steps),
+            memberCount: p.members.length,
+          }));
+          setProjStats({ total, devamEdiyor, tamamlandi, beklemede, iptal, avgProgress, recentProjects });
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -382,6 +424,84 @@ export default function RaporlarPage() {
           </div>
         </div>
       )}
+
+      {/* ── Proje Raporu ─────────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-violet-600" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Proje Raporu</h2>
+        </div>
+
+        {/* KPI Row */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[
+            { label: "Toplam Proje",   value: projStats?.total ?? "—",        color: "indigo" },
+            { label: "Devam Ediyor",   value: projStats?.devamEdiyor ?? "—",  color: "indigo" },
+            { label: "Tamamlandı",     value: projStats?.tamamlandi ?? "—",   color: "emerald" },
+            { label: "Beklemede",      value: projStats?.beklemede ?? "—",    color: "amber" },
+            { label: "Ort. İlerleme",  value: projStats ? `%${projStats.avgProgress}` : "—", color: "rose" },
+          ].map(kpi => (
+            <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} color={kpi.color} />
+          ))}
+        </div>
+
+        {/* Recent Projects Table */}
+        {(projStats?.recentProjects?.length ?? 0) > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-gray-200">Son Projeler</h3>
+              <a href="/projeler" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">Tümünü gör →</a>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-gray-800 bg-slate-50 dark:bg-gray-900">
+                    {["Proje Adı", "Durum", "Üye", "İlerleme"].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-gray-500 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-gray-800/60">
+                  {projStats?.recentProjects.map(p => {
+                    const statusColors: Record<string, string> = {
+                      "Devam Ediyor": "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
+                      "Tamamlandı":   "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+                      "Beklemede":    "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300",
+                      "İptal":        "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
+                    };
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-gray-800/30 transition-colors">
+                        <td className="px-5 py-3 font-semibold text-slate-800 dark:text-gray-200">
+                          <a href={`/projeler/${p.id}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{p.name}</a>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[p.status] ?? "bg-slate-100 text-slate-500"}`}>{p.status}</span>
+                        </td>
+                        <td className="px-5 py-3 text-slate-500 dark:text-gray-400">{p.memberCount} üye</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-gray-800 rounded-full overflow-hidden min-w-[60px]">
+                              <div className={`h-full rounded-full transition-all ${p.progress === 100 ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: `${p.progress}%` }} />
+                            </div>
+                            <span className="text-xs text-slate-400 dark:text-gray-600 w-8">{p.progress}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {projStats?.total === 0 && (
+          <div className="py-12 text-center text-slate-400 dark:text-gray-600 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl">
+            <div className="text-3xl mb-2">📁</div>
+            <p className="text-sm font-medium">Henüz proje yok</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
