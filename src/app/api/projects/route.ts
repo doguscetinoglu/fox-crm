@@ -4,7 +4,19 @@ import { getSession } from "@/lib/auth";
 
 export async function GET() {
   const session = await getSession();
-  if (!session || session.type === "customer") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (session.type === "customer") {
+    const projects = await prisma.project.findMany({
+      where: { customerId: session.id },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, color: true } } } },
+        steps: { include: { tasks: true }, orderBy: { order: "asc" } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(projects);
+  }
 
   const projects = await prisma.project.findMany({
     include: {

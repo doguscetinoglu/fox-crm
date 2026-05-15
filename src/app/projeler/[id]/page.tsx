@@ -38,6 +38,7 @@ function calcProgress(steps: Step[]) {
 
 export default function ProjeDetayPage() {
   const { id } = useParams<{ id: string }>();
+  const [me, setMe] = useState<{ id: number; type: string } | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [customers, setCustomers] = useState<{ id: number; name: string | null }[]>([]);
@@ -53,6 +54,7 @@ export default function ProjeDetayPage() {
     stepId: null, title: "", assigneeId: "", assigneeType: "user", dueDate: "",
   });
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const isAdmin = me?.type === "admin";
 
   const fetchProject = useCallback(async () => {
     const r = await fetch(`/api/projects/${id}`);
@@ -73,6 +75,7 @@ export default function ProjeDetayPage() {
     fetchProject();
     fetchLogs();
     fetchMessages();
+    fetch("/api/auth/me").then(r => r.ok ? r.json() : null).then(setMe);
     fetch("/api/users").then(r => r.json()).then(setUsers);
     fetch("/api/customers").then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : []));
   }, [fetchProject, fetchLogs, fetchMessages]);
@@ -274,10 +277,12 @@ export default function ProjeDetayPage() {
 
                   <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                     <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[step.status]}`}>{step.status}</span>
-                    <button onClick={() => setTaskForm({ stepId: step.id, title: "", assigneeId: "", assigneeType: "user", dueDate: "" })}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all">
-                      + Görev
-                    </button>
+                    {isAdmin && (
+                      <button onClick={() => setTaskForm({ stepId: step.id, title: "", assigneeId: "", assigneeType: "user", dueDate: "" })}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all">
+                        + Görev
+                      </button>
+                    )}
                     <span className="text-slate-300 dark:text-gray-600 text-sm">{isExp ? "▲" : "▼"}</span>
                   </div>
                 </div>
@@ -293,12 +298,16 @@ export default function ProjeDetayPage() {
                         ? users.find(u => u.id === task.assigneeId)
                         : null;
                       const isOverdue = task.dueDate && task.status !== "Tamamlandı" && new Date(task.dueDate) < new Date();
+                      const canToggle = isAdmin || (me?.type === "agent" && task.assigneeId === me.id && task.assigneeType === "user");
 
                       return (
                         <div key={task.id} className={`flex items-center gap-3 px-6 py-3 hover:bg-slate-50 dark:hover:bg-gray-800/30 transition-colors ${task.status === "Tamamlandı" ? "opacity-60" : ""}`}>
                           {/* Checkbox */}
-                          <button onClick={() => updateTaskStatus(task.id, task.status === "Tamamlandı" ? "Beklemede" : task.status === "Beklemede" ? "Devam Ediyor" : "Tamamlandı")}
-                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${task.status === "Tamamlandı" ? "bg-emerald-500 border-emerald-500 text-white" : task.status === "Devam Ediyor" ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10" : "border-slate-300 dark:border-gray-600 hover:border-indigo-400"}`}>
+                          <button
+                            onClick={() => canToggle && updateTaskStatus(task.id, task.status === "Tamamlandı" ? "Beklemede" : task.status === "Beklemede" ? "Devam Ediyor" : "Tamamlandı")}
+                            disabled={!canToggle}
+                            title={canToggle ? undefined : "Bu görev size atanmamış"}
+                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${!canToggle ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${task.status === "Tamamlandı" ? "bg-emerald-500 border-emerald-500 text-white" : task.status === "Devam Ediyor" ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10" : "border-slate-300 dark:border-gray-600 hover:border-indigo-400"}`}>
                             {task.status === "Tamamlandı" && <span className="text-[10px]">✓</span>}
                             {task.status === "Devam Ediyor" && <span className="w-2 h-2 rounded-full bg-blue-500" />}
                           </button>
@@ -331,17 +340,19 @@ export default function ProjeDetayPage() {
             );
           })}
 
-          {/* Add Step */}
-          <div className="flex gap-2">
-            <input value={addStepName} onChange={e => setAddStepName(e.target.value)}
-              placeholder="Yeni adım adı..."
-              onKeyDown={e => e.key === "Enter" && addStep()}
-              className="flex-1 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-sm" />
-            <button onClick={addStep} disabled={addingStep || !addStepName.trim()}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40">
-              {addingStep ? "..." : "+ Adım"}
-            </button>
-          </div>
+          {/* Add Step — admin only */}
+          {isAdmin && (
+            <div className="flex gap-2">
+              <input value={addStepName} onChange={e => setAddStepName(e.target.value)}
+                placeholder="Yeni adım adı..."
+                onKeyDown={e => e.key === "Enter" && addStep()}
+                className="flex-1 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-sm" />
+              <button onClick={addStep} disabled={addingStep || !addStepName.trim()}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40">
+                {addingStep ? "..." : "+ Adım"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -415,8 +426,8 @@ export default function ProjeDetayPage() {
         </div>
       )}
 
-      {/* Add Task Modal */}
-      {taskForm.stepId !== null && (
+      {/* Add Task Modal — admin only */}
+      {isAdmin && taskForm.stepId !== null && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setTaskForm(f => ({ ...f, stepId: null }))}>
           <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 mb-4">Görev Ekle</h3>

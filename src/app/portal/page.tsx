@@ -18,6 +18,180 @@ interface Ticket {
   assignee: { name: string; color: string } | null;
 }
 
+interface ProjTask { id: number; status: string; }
+interface ProjStep { id: number; name: string; status: string; tasks: ProjTask[]; }
+interface Project {
+  id: number; name: string; description: string | null; status: string; createdAt: string;
+  members: { user: { name: string; color: string } }[];
+  steps: ProjStep[];
+}
+interface ProjMessage { id: number; userName: string | null; userType: string; body: string; createdAt: string; }
+
+const PROJ_STATUS: Record<string, string> = {
+  "Devam Ediyor": "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
+  "Tamamlandı":   "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+  "Beklemede":    "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300",
+  "İptal":        "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
+};
+
+function calcProgress(steps: ProjStep[]) {
+  const all = steps.flatMap(s => s.tasks);
+  if (!all.length) {
+    if (!steps.length) return 0;
+    return Math.round((steps.filter(s => s.status === "Tamamlandı").length / steps.length) * 100);
+  }
+  return Math.round((all.filter(t => t.status === "Tamamlandı").length / all.length) * 100);
+}
+
+function ProjectCard({ project }: { project: Project }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ProjMessage[]>([]);
+  const [msgBody, setMsgBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [chatTab, setChatTab] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const loadMessages = useCallback(async () => {
+    const r = await fetch(`/api/projects/${project.id}/messages`);
+    if (r.ok) setMessages(await r.json());
+  }, [project.id]);
+
+  useEffect(() => {
+    if (open) loadMessages();
+  }, [open, loadMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMsg = async () => {
+    if (!msgBody.trim()) return;
+    setSending(true);
+    await fetch(`/api/projects/${project.id}/messages`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: msgBody }),
+    });
+    setMsgBody(""); setSending(false);
+    loadMessages();
+  };
+
+  const progress = calcProgress(project.steps);
+
+  return (
+    <div className={`bg-white dark:bg-gray-900 border rounded-2xl shadow-sm dark:shadow-none transition-all ${open ? "border-indigo-300 dark:border-indigo-600/40" : "border-slate-200 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-gray-700"}`}>
+      {/* Card header */}
+      <div className="p-4 md:p-5 cursor-pointer" onClick={() => setOpen(o => !o)}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-slate-800 dark:text-gray-100 leading-snug">{project.name}</p>
+            {project.description && <p className="text-sm text-slate-500 dark:text-gray-500 mt-0.5 line-clamp-1">{project.description}</p>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${PROJ_STATUS[project.status] ?? "bg-slate-100 text-slate-500"}`}>{project.status}</span>
+            <span className={`text-slate-400 dark:text-gray-600 text-xs transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
+          </div>
+        </div>
+
+        {/* Progress */}
+        <div>
+          <div className="flex justify-between text-xs text-slate-400 dark:text-gray-600 mb-1">
+            <span>{project.steps.length} adım</span>
+            <span className="font-semibold text-slate-600 dark:text-gray-400">{progress}%</span>
+          </div>
+          <div className="h-1.5 bg-slate-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${progress === 100 ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded */}
+      {open && (
+        <div className="border-t border-slate-100 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+          {/* Inner tabs */}
+          <div className="flex border-b border-slate-100 dark:border-gray-800">
+            <button onClick={() => setChatTab(false)}
+              className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${!chatTab ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500" : "text-slate-400 dark:text-gray-600 hover:text-slate-600"}`}>
+              Adımlar
+            </button>
+            <button onClick={() => setChatTab(true)}
+              className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${chatTab ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500" : "text-slate-400 dark:text-gray-600 hover:text-slate-600"}`}>
+              Sohbet
+            </button>
+          </div>
+
+          {/* Steps view */}
+          {!chatTab && (
+            <div className="divide-y divide-slate-50 dark:divide-gray-800/60">
+              {project.steps.length === 0 && (
+                <p className="py-8 text-center text-sm text-slate-400 dark:text-gray-600">Henüz adım eklenmedi</p>
+              )}
+              {project.steps.map((step, i) => {
+                const doneT = step.tasks.filter(t => t.status === "Tamamlandı").length;
+                return (
+                  <div key={step.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.status === "Tamamlandı" ? "bg-emerald-500 text-white" : step.status === "Devam Ediyor" ? "bg-blue-500 text-white" : "bg-slate-100 dark:bg-gray-800 text-slate-400"}`}>
+                      {step.status === "Tamamlandı" ? "✓" : i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 dark:text-gray-300">{step.name}</p>
+                      {step.tasks.length > 0 && (
+                        <p className="text-xs text-slate-400 dark:text-gray-600">{doneT}/{step.tasks.length} görev</p>
+                      )}
+                    </div>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${step.status === "Tamamlandı" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : step.status === "Devam Ediyor" ? "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-gray-800 text-slate-400"}`}>
+                      {step.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Chat view */}
+          {chatTab && (
+            <div className="flex flex-col" style={{ height: "320px" }}>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messages.length === 0 && (
+                  <div className="flex items-center justify-center h-full text-slate-400 dark:text-gray-600 text-sm">Henüz mesaj yok</div>
+                )}
+                {messages.map(msg => {
+                  const isTeam = msg.userType !== "customer";
+                  return (
+                    <div key={msg.id} className={`flex gap-2 ${isTeam ? "" : "flex-row-reverse"}`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${isTeam ? "bg-indigo-500" : "bg-teal-500"}`}>
+                        {(msg.userName ?? "?")[0].toUpperCase()}
+                      </div>
+                      <div className={`max-w-[75%] flex flex-col gap-0.5 ${isTeam ? "" : "items-end"}`}>
+                        <div className={`px-3 py-2 rounded-2xl text-sm ${isTeam ? "bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-gray-200 rounded-tl-sm" : "bg-indigo-600 text-white rounded-tr-sm"}`}>
+                          {msg.body}
+                        </div>
+                        <p className="text-[10px] text-slate-400 dark:text-gray-600 px-1">
+                          {msg.userName ?? "?"} · {new Date(msg.createdAt).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={bottomRef} />
+              </div>
+              <div className="p-3 border-t border-slate-100 dark:border-gray-800 flex gap-2 shrink-0">
+                <input value={msgBody} onChange={e => setMsgBody(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && sendMsg()}
+                  placeholder="Mesaj yaz..."
+                  className="flex-1 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                <button onClick={sendMsg} disabled={sending || !msgBody.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl disabled:opacity-40 transition-all">
+                  Gönder
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CATEGORIES = ["Genel", "Teknik Destek", "Fatura", "Öneri", "Şikayet"];
 const PRIORITIES = ["Normal", "Yüksek", "Kritik"];
 
@@ -182,6 +356,8 @@ function ReplyThread({ ticketId, onClose }: { ticketId: number; onClose: () => v
 export default function PortalPage() {
   const [me, setMe]           = useState<SessionUser | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [portalTab, setPortalTab] = useState<"tickets" | "projects">("tickets");
   const [creating, setCreating] = useState(false);
   const [form, setForm]         = useState({ subject: "", body: "", category: "Genel", priority: "Normal" });
   const [saving, setSaving]     = useState(false);
@@ -189,12 +365,14 @@ export default function PortalPage() {
   const [openTicketId, setOpenTicketId] = useState<number | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [meRes, tRes] = await Promise.all([
+    const [meRes, tRes, pRes] = await Promise.all([
       fetch("/api/auth/me").then(r => r.ok ? r.json() : null),
       fetch("/api/tickets").then(r => r.json()),
+      fetch("/api/projects").then(r => r.ok ? r.json() : []),
     ]);
     setMe(meRes);
     setTickets(Array.isArray(tRes) ? tRes : []);
+    setProjects(Array.isArray(pRes) ? pRes : []);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -243,6 +421,20 @@ export default function PortalPage() {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-5">
+        {/* Tab switcher */}
+        <div className="flex bg-slate-100 dark:bg-gray-800 rounded-xl p-1 gap-1 w-fit">
+          <button onClick={() => setPortalTab("tickets")}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${portalTab === "tickets" ? "bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 shadow-sm" : "text-slate-500 dark:text-gray-500 hover:text-slate-700"}`}>
+            Taleplerim
+          </button>
+          <button onClick={() => setPortalTab("projects")}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${portalTab === "projects" ? "bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 shadow-sm" : "text-slate-500 dark:text-gray-500 hover:text-slate-700"}`}>
+            Projelerim {projects.length > 0 && <span className="ml-1 text-[10px] bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full">{projects.length}</span>}
+          </button>
+        </div>
+
+        {/* ── Tickets tab ── */}
+        {portalTab === "tickets" && <>
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
@@ -323,6 +515,20 @@ export default function PortalPage() {
             );
           })}
         </div>
+        </>}
+
+        {/* ── Projects tab ── */}
+        {portalTab === "projects" && (
+          <div className="space-y-3">
+            {projects.length === 0 ? (
+              <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl text-center py-16 shadow-sm dark:shadow-none">
+                <div className="text-4xl mb-3">📁</div>
+                <p className="font-semibold text-slate-700 dark:text-gray-400">Henüz proje yok</p>
+                <p className="text-sm text-slate-400 dark:text-gray-600 mt-1">Size atanan projeler burada görünecek</p>
+              </div>
+            ) : projects.map(p => <ProjectCard key={p.id} project={p} />)}
+          </div>
+        )}
       </div>
 
       {/* New ticket modal */}
