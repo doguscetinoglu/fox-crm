@@ -10,6 +10,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: { rejectUnauthorized: false },
 });
 
 function baseTemplate(content: string): string {
@@ -66,6 +67,7 @@ export async function sendTicketConfirmationEmail(
     subject: emailSubject,
     html,
     text: `Destek talebiniz alındı.\n\nTicket #${ticketId}\nKonu: ${subject}\n\nEkibimiz en kısa sürede dönüş yapacaktır.`,
+    encoding: "utf-8",
   });
 }
 
@@ -105,5 +107,6 @@ export async function sendReplyEmail(
     subject: emailSubject,
     html,
     text: `${agentName} destek talebinize yanıt verdi:\n\n${body}${attText}`,
+    encoding: "utf-8",
   });
 }
