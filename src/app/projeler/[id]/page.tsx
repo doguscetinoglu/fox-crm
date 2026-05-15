@@ -17,6 +17,27 @@ interface Log { id: number; userName: string | null; action: string; createdAt: 
 interface Attachment { url: string; name: string; size: number; type: string; }
 interface Message { id: number; userName: string | null; userType: string; body: string; attachments: string; createdAt: string; }
 
+type WhoWaiting = "customer" | "team" | "both" | "pending" | "syncing";
+interface WaitingInfo { step: string; who: WhoWaiting; label: string; }
+
+function getWaiting(steps: Step[], members: Member[] = []): WaitingInfo | null {
+  if (!steps.length) return null;
+  const active = steps.find(s => s.status === "Devam Ediyor") ?? steps.find(s => s.status === "Beklemede");
+  if (!active) return null;
+  const pending = active.tasks.filter(t => t.status !== "Tamamlandı");
+  if (!pending.length) return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
+  const custP = pending.filter(t => t.assigneeType === "customer");
+  const teamP = pending.filter(t => t.assigneeType === "user");
+  if (custP.length && !teamP.length) return { step: active.name, who: "customer", label: "Müşteri onayı bekleniyor" };
+  if (teamP.length && !custP.length) {
+    const names = [...new Set(teamP.filter(t => t.assigneeId).map(t => members.find(m => m.user.id === t.assigneeId)?.user.name ?? "Ekip"))];
+    const label = names.length ? (names.length <= 2 ? names.join(", ") : `${names[0]} +${names.length - 1}`) : "Ekip çalışıyor";
+    return { step: active.name, who: "team", label };
+  }
+  if (custP.length && teamP.length) return { step: active.name, who: "both", label: "Müşteri + Ekip" };
+  return { step: active.name, who: "pending", label: "Başlanmadı" };
+}
+
 const STATUS_COLORS: Record<string, string> = {
   "Beklemede":   "bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400",
   "Devam Ediyor":"bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20",
@@ -143,6 +164,8 @@ export default function ProjeDetayPage() {
   const progress = calcProgress(project.steps);
   const totalTasks = project.steps.flatMap(s => s.tasks).length;
   const doneTasks = project.steps.flatMap(s => s.tasks).filter(t => t.status === "Tamamlandı").length;
+  const waiting = project.status !== "Tamamlandı" && project.status !== "İptal"
+    ? getWaiting(project.steps, project.members) : null;
 
   return (
     <div className="p-4 md:p-7 space-y-5 animate-fade-in">
@@ -196,6 +219,30 @@ export default function ProjeDetayPage() {
             <span className="text-xs text-indigo-200 mt-1">İlerleme</span>
           </div>
         </div>
+
+        {/* Who is waiting */}
+        {waiting && (
+          <div className="mt-3 pt-3 border-t border-white/10">
+            {(() => {
+              const cfg: Record<WhoWaiting, { dot: string; label: string; bg: string }> = {
+                customer: { dot: "bg-amber-400", label: waiting.label, bg: "bg-amber-400/20 text-amber-200 border-amber-300/30" },
+                team:     { dot: "bg-white",     label: waiting.label, bg: "bg-white/15 text-white border-white/20" },
+                both:     { dot: "bg-violet-300",label: waiting.label, bg: "bg-violet-400/20 text-violet-200 border-violet-300/30" },
+                pending:  { dot: "bg-white/40",  label: waiting.label, bg: "bg-white/10 text-indigo-200 border-white/10" },
+                syncing:  { dot: "bg-emerald-400",label: waiting.label, bg: "bg-emerald-400/20 text-emerald-200 border-emerald-300/30" },
+              };
+              const c = cfg[waiting.who];
+              const pulse = waiting.who === "customer" || waiting.who === "team" || waiting.who === "both";
+              return (
+                <div className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-xs font-semibold ${c.bg}`}>
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${c.dot} ${pulse ? "animate-pulse" : ""}`} />
+                  <span>Şu an: {c.label}</span>
+                  <span className="opacity-60 font-normal">— {waiting.step} adımı</span>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Members */}
         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">

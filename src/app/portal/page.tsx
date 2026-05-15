@@ -35,6 +35,13 @@ const PROJ_STATUS: Record<string, string> = {
   "İptal":        "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
 };
 
+const PROJ_ACCENT: Record<string, string> = {
+  "Devam Ediyor": "from-blue-500 to-indigo-600",
+  "Tamamlandı":   "from-emerald-500 to-teal-600",
+  "Beklemede":    "from-amber-500 to-orange-500",
+  "İptal":        "from-red-500 to-rose-600",
+};
+
 function calcProgress(steps: ProjStep[]) {
   const all = steps.flatMap(s => s.tasks);
   if (!all.length) {
@@ -42,6 +49,23 @@ function calcProgress(steps: ProjStep[]) {
     return Math.round((steps.filter(s => s.status === "Tamamlandı").length / steps.length) * 100);
   }
   return Math.round((all.filter(t => t.status === "Tamamlandı").length / all.length) * 100);
+}
+
+type WhoWaiting = "customer" | "team" | "both" | "pending" | "syncing";
+interface WaitingInfo { step: string; who: WhoWaiting; label: string; }
+
+function getWaiting(steps: ProjStep[]): WaitingInfo | null {
+  if (!steps.length) return null;
+  const active = steps.find(s => s.status === "Devam Ediyor") ?? steps.find(s => s.status === "Beklemede");
+  if (!active) return null;
+  const pending = active.tasks.filter(t => t.status !== "Tamamlandı");
+  if (!pending.length) return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
+  const custP = pending.filter(t => t.assigneeType === "customer");
+  const teamP = pending.filter(t => t.assigneeType === "user");
+  if (custP.length && !teamP.length) return { step: active.name, who: "customer", label: "Sizin onayınız bekleniyor" };
+  if (teamP.length && !custP.length) return { step: active.name, who: "team", label: "Ekip çalışıyor" };
+  if (custP.length && teamP.length) return { step: active.name, who: "both", label: "Müşteri + Ekip çalışıyor" };
+  return { step: active.name, who: "pending", label: "Başlanmadı" };
 }
 
 function ProjAttachView({ att }: { att: ProjAttachment }) {
@@ -58,6 +82,28 @@ function ProjAttachView({ att }: { att: ProjAttachment }) {
       <span>📄</span>
       <span className="truncate max-w-[160px]">{att.name}</span>
     </a>
+  );
+}
+
+function WaitingBanner({ info }: { info: WaitingInfo | null }) {
+  if (!info) return null;
+  const cfg: Record<WhoWaiting, { dot: string; bg: string; text: string; icon: string }> = {
+    customer: { dot: "bg-amber-400 animate-pulse", bg: "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/10 dark:to-orange-500/10 border-amber-200 dark:border-amber-500/30", text: "text-amber-800 dark:text-amber-200", icon: "⚠️" },
+    team:     { dot: "bg-indigo-500 animate-pulse", bg: "bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-500/10 dark:to-blue-500/10 border-indigo-200 dark:border-indigo-500/30", text: "text-indigo-800 dark:text-indigo-200", icon: "⚙️" },
+    both:     { dot: "bg-violet-500 animate-pulse", bg: "bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-500/10 dark:to-purple-500/10 border-violet-200 dark:border-violet-500/30", text: "text-violet-800 dark:text-violet-200", icon: "🔄" },
+    pending:  { dot: "bg-slate-400", bg: "bg-slate-50 dark:bg-gray-800/60 border-slate-200 dark:border-gray-700", text: "text-slate-600 dark:text-gray-400", icon: "⏸" },
+    syncing:  { dot: "bg-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30", text: "text-emerald-800 dark:text-emerald-200", icon: "✓" },
+  };
+  const c = cfg[info.who];
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 border-t ${c.bg}`}>
+      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${c.dot}`} />
+      <div className="flex-1 min-w-0">
+        <p className={`text-xs font-bold ${c.text}`}>{info.label}</p>
+        <p className="text-[11px] text-slate-400 dark:text-gray-600 truncate">{info.step} adımı</p>
+      </div>
+      <span className="text-base">{c.icon}</span>
+    </div>
   );
 }
 
@@ -115,31 +161,75 @@ function ProjectCard({ project }: { project: Project }) {
   };
 
   const progress = calcProgress(steps);
+  const waiting = project.status !== "Tamamlandı" && project.status !== "İptal" ? getWaiting(steps) : null;
+  const allTasks = steps.flatMap(s => s.tasks);
+  const doneTasks = allTasks.filter(t => t.status === "Tamamlandı").length;
+  const doneSteps = steps.filter(s => s.status === "Tamamlandı").length;
+  const accent = PROJ_ACCENT[project.status] ?? "from-slate-400 to-slate-500";
 
   return (
-    <div className={`bg-white dark:bg-gray-900 border rounded-2xl shadow-sm dark:shadow-none transition-all ${open ? "border-indigo-300 dark:border-indigo-600/40" : "border-slate-200 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-gray-700"}`}>
-      {/* Card header */}
-      <div className="p-4 md:p-5 cursor-pointer" onClick={() => setOpen(o => !o)}>
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0 flex-1">
-            <p className="font-bold text-slate-800 dark:text-gray-100 leading-snug">{project.name}</p>
-            {project.description && <p className="text-sm text-slate-500 dark:text-gray-500 mt-0.5 line-clamp-1">{project.description}</p>}
+    <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+      {/* Gradient top accent */}
+      <div className={`h-1 bg-gradient-to-r ${accent}`} />
+
+      {/* Card body */}
+      <div className="p-5 cursor-pointer" onClick={() => setOpen(o => !o)}>
+        <div className="flex gap-4">
+          {/* SVG Progress Ring */}
+          <div className="shrink-0 flex flex-col items-center gap-1 pt-0.5">
+            <div className="relative w-16 h-16">
+              <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" strokeWidth="6" className="text-slate-100 dark:text-gray-800" />
+                <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" strokeWidth="6"
+                  className={progress === 100 ? "text-emerald-500" : "text-indigo-500"}
+                  strokeDasharray={`${2 * Math.PI * 26}`}
+                  strokeDashoffset={`${2 * Math.PI * 26 * (1 - progress / 100)}`}
+                  strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.7s" }} />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-sm font-bold leading-none ${progress === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-700 dark:text-gray-200"}`}>{progress}%</span>
+              </div>
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-gray-600">ilerleme</span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${PROJ_STATUS[project.status] ?? "bg-slate-100 text-slate-500"}`}>{project.status}</span>
-            <span className={`text-slate-400 dark:text-gray-600 text-xs transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
-          </div>
-        </div>
-        <div>
-          <div className="flex justify-between text-xs text-slate-400 dark:text-gray-600 mb-1">
-            <span>{steps.length} adım</span>
-            <span className="font-semibold text-slate-600 dark:text-gray-400">{progress}%</span>
-          </div>
-          <div className="h-1.5 bg-slate-100 dark:bg-gray-800 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${progress === 100 ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: `${progress}%` }} />
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <p className="font-bold text-slate-800 dark:text-gray-100 leading-snug">{project.name}</p>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${PROJ_STATUS[project.status] ?? "bg-slate-100 text-slate-500"}`}>{project.status}</span>
+                <span className={`text-slate-400 dark:text-gray-600 text-xs transition-transform duration-200 ${open ? "rotate-180" : ""}`}>▼</span>
+              </div>
+            </div>
+
+            {project.description && (
+              <p className="text-xs text-slate-500 dark:text-gray-500 mb-2 line-clamp-1">{project.description}</p>
+            )}
+
+            {/* Step dots — current step pulses */}
+            {steps.length > 0 && (
+              <div className="flex gap-1 mb-2">
+                {steps.map(s => (
+                  <div key={s.id} title={s.name}
+                    className={`h-1.5 flex-1 min-w-[10px] rounded-full ${s.status === "Tamamlandı" ? "bg-emerald-500" : s.status === "Devam Ediyor" ? "bg-indigo-400 animate-pulse" : "bg-slate-200 dark:bg-gray-700"}`} />
+                ))}
+              </div>
+            )}
+
+            {/* Mini stats */}
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-gray-600">
+              <span>{doneSteps}/{steps.length} adım</span>
+              {allTasks.length > 0 && <><span>·</span><span>{doneTasks}/{allTasks.length} görev</span></>}
+              <span>·</span>
+              <span>{new Date(project.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric" })}</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Waiting banner */}
+      <WaitingBanner info={waiting} />
 
       {/* Expanded */}
       {open && (
@@ -617,14 +707,46 @@ export default function PortalPage() {
 
         {/* ── Projects tab ── */}
         {portalTab === "projects" && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {projects.length === 0 ? (
               <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl text-center py-16 shadow-sm dark:shadow-none">
                 <div className="text-4xl mb-3">📁</div>
                 <p className="font-semibold text-slate-700 dark:text-gray-400">Henüz proje yok</p>
                 <p className="text-sm text-slate-400 dark:text-gray-600 mt-1">Size atanan projeler burada görünecek</p>
               </div>
-            ) : projects.map(p => <ProjectCard key={p.id} project={p} />)}
+            ) : (<>
+              {/* Project stats */}
+              {(() => {
+                const inProg = projects.filter(p => p.status === "Devam Ediyor").length;
+                const done   = projects.filter(p => p.status === "Tamamlandı").length;
+                const waitMe = projects.filter(p => {
+                  const w = getWaiting(p.steps);
+                  return w?.who === "customer";
+                }).length;
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: "Toplam Proje",  val: projects.length, color: "text-slate-700 dark:text-gray-200",    icon: "📁" },
+                      { label: "Devam Ediyor",  val: inProg,          color: "text-blue-600 dark:text-blue-400",     icon: "🔵" },
+                      { label: "Tamamlandı",    val: done,            color: "text-emerald-600 dark:text-emerald-400",icon: "✅" },
+                      { label: "Onayınız Bekleniyor", val: waitMe,   color: "text-amber-600 dark:text-amber-400",    icon: "⚠️" },
+                    ].map(s => (
+                      <div key={s.label} className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-none">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-gray-500 uppercase tracking-wider leading-tight">{s.label}</p>
+                          <span className="text-base">{s.icon}</span>
+                        </div>
+                        <p className={`text-2xl font-bold ${s.color}`}>{s.val}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              {/* Cards */}
+              <div className="space-y-3">
+                {projects.map(p => <ProjectCard key={p.id} project={p} />)}
+              </div>
+            </>)}
           </div>
         )}
       </div>

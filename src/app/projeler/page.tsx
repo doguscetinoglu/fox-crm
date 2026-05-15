@@ -5,13 +5,53 @@ import Link from "next/link";
 
 interface User { id: number; name: string; color: string; }
 interface Customer { id: number; name: string | null; company: string | null; }
-interface Task { id: number; status: string; }
+interface Task { id: number; status: string; assigneeId: number | null; assigneeType: string | null; }
 interface Step { id: number; name: string; status: string; tasks: Task[]; }
 interface Member { user: User; }
 interface Project {
   id: number; name: string; description: string | null; status: string;
   createdAt: string; customer: Customer | null;
   members: Member[]; steps: Step[];
+}
+
+type WhoWaiting = "customer" | "team" | "both" | "pending" | "syncing";
+interface WaitingInfo { step: string; who: WhoWaiting; label: string; }
+
+function getWaiting(steps: Step[], members: Member[] = []): WaitingInfo | null {
+  if (!steps.length) return null;
+  const active = steps.find(s => s.status === "Devam Ediyor") ?? steps.find(s => s.status === "Beklemede");
+  if (!active) return null;
+  const pending = active.tasks.filter(t => t.status !== "Tamamlandı");
+  if (!pending.length) return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
+  const custP = pending.filter(t => t.assigneeType === "customer");
+  const teamP = pending.filter(t => t.assigneeType === "user");
+  if (custP.length && !teamP.length) return { step: active.name, who: "customer", label: "Müşteri onayı bekleniyor" };
+  if (teamP.length && !custP.length) {
+    const names = [...new Set(teamP.filter(t => t.assigneeId).map(t => members.find(m => m.user.id === t.assigneeId)?.user.name ?? "Ekip"))];
+    const label = names.length ? (names.length <= 2 ? names.join(", ") : `${names[0]} +${names.length - 1}`) : "Ekip çalışıyor";
+    return { step: active.name, who: "team", label };
+  }
+  if (custP.length && teamP.length) return { step: active.name, who: "both", label: "Müşteri + Ekip" };
+  return { step: active.name, who: "pending", label: "Başlanmadı" };
+}
+
+function WaitingBadge({ info }: { info: WaitingInfo | null }) {
+  if (!info) return null;
+  const cfg: Record<WhoWaiting, { dot: string; text: string; row: string }> = {
+    customer: { dot: "bg-amber-400 animate-pulse", text: "text-amber-700 dark:text-amber-300", row: "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20" },
+    team:     { dot: "bg-indigo-500 animate-pulse", text: "text-indigo-700 dark:text-indigo-300", row: "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20" },
+    both:     { dot: "bg-violet-500 animate-pulse", text: "text-violet-700 dark:text-violet-300", row: "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20" },
+    pending:  { dot: "bg-slate-400", text: "text-slate-500 dark:text-gray-400", row: "bg-slate-50 dark:bg-gray-800 border-slate-200 dark:border-gray-700" },
+    syncing:  { dot: "bg-emerald-400", text: "text-emerald-700 dark:text-emerald-300", row: "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20" },
+  };
+  const c = cfg[info.who];
+  return (
+    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[11px] font-medium ${c.row}`}>
+      <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+      <span className={c.text}>{info.label}</span>
+      <span className="text-slate-400 dark:text-gray-600 truncate">· {info.step}</span>
+    </div>
+  );
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -127,6 +167,7 @@ export default function ProjelerPage() {
           const doneTasks = p.steps.flatMap(s => s.tasks).filter(t => t.status === "Tamamlandı").length;
           const totalTasks = p.steps.flatMap(s => s.tasks).length;
           const doneSteps = p.steps.filter(s => s.status === "Tamamlandı").length;
+          const waiting = p.status !== "Tamamlandı" && p.status !== "İptal" ? getWaiting(p.steps, p.members) : null;
 
           return (
             <Link key={p.id} href={`/projeler/${p.id}`}
@@ -164,10 +205,13 @@ export default function ProjelerPage() {
                 <div className="flex gap-1 mb-3 flex-wrap">
                   {p.steps.map(s => (
                     <div key={s.id} title={s.name}
-                      className={`h-1.5 flex-1 min-w-[12px] rounded-full ${s.status === "Tamamlandı" ? "bg-emerald-500" : s.status === "Devam Ediyor" ? "bg-indigo-400" : "bg-slate-200 dark:bg-gray-700"}`} />
+                      className={`h-1.5 flex-1 min-w-[12px] rounded-full ${s.status === "Tamamlandı" ? "bg-emerald-500" : s.status === "Devam Ediyor" ? "bg-indigo-400 animate-pulse" : "bg-slate-200 dark:bg-gray-700"}`} />
                   ))}
                 </div>
               )}
+
+              {/* Who is waiting */}
+              {waiting && <div className="mb-3"><WaitingBadge info={waiting} /></div>}
 
               {/* Footer */}
               <div className="flex items-center justify-between">
