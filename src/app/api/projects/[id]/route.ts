@@ -20,6 +20,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   if (!project) return NextResponse.json({ error: "Bulunamadı" }, { status: 404 });
+  if (session.type === "customer" && project.customerId !== session.id)
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   return NextResponse.json(project);
 }
 

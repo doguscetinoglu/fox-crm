@@ -73,6 +73,7 @@ export default function ProjeDetayPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [tab, setTab] = useState<"tree" | "log" | "chat">("tree");
   const [msgBody, setMsgBody] = useState("");
+  const [msgFiles, setMsgFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [addStepName, setAddStepName] = useState("");
   const [addingStep, setAddingStep] = useState(false);
@@ -81,6 +82,7 @@ export default function ProjeDetayPage() {
     stepId: null, title: "", assigneeId: "", assigneeType: "user", dueDate: "",
   });
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatFileRef = useRef<HTMLInputElement>(null);
   const isAdmin = me?.type === "admin";
 
   const fetchProject = useCallback(async () => {
@@ -146,13 +148,19 @@ export default function ProjeDetayPage() {
   };
 
   const sendMessage = async () => {
-    if (!msgBody.trim()) return;
+    if (!msgBody.trim() && msgFiles.length === 0) return;
     setSending(true);
+    const uploaded: Attachment[] = [];
+    for (const file of msgFiles) {
+      const fd = new FormData(); fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) uploaded.push(await res.json());
+    }
     await fetch(`/api/projects/${id}/messages`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: msgBody }),
+      body: JSON.stringify({ body: msgBody, attachments: uploaded }),
     });
-    setMsgBody(""); setSending(false);
+    setMsgBody(""); setMsgFiles([]); setSending(false);
     fetchMessages();
   };
 
@@ -479,14 +487,41 @@ export default function ProjeDetayPage() {
             <div ref={chatBottomRef} />
           </div>
 
+          {msgFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-3 pt-2 border-t border-slate-100 dark:border-gray-800">
+              {msgFiles.map((f, i) => (
+                <div key={i} className="relative group">
+                  {f.type.startsWith("image/") ? (
+                    <img src={URL.createObjectURL(f)} alt={f.name} className="h-12 w-12 object-cover rounded-lg border border-slate-200 dark:border-gray-700" />
+                  ) : (
+                    <div className="h-12 w-12 rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-0.5 px-1">
+                      <span className="text-lg">📄</span>
+                      <span className="text-[8px] text-slate-400 text-center line-clamp-2">{f.name}</span>
+                    </div>
+                  )}
+                  <button onClick={() => setMsgFiles(p => p.filter((_, j) => j !== i))}
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="p-3 border-t border-slate-100 dark:border-gray-800 flex gap-2 shrink-0">
-            <input value={msgBody} onChange={e => setMsgBody(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              placeholder="Mesaj yaz..."
-              className="flex-1 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
-            <button onClick={sendMessage} disabled={sending || !msgBody.trim()}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40">
-              Gönder
+            <div className="flex-1 space-y-1">
+              <input value={msgBody} onChange={e => setMsgBody(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
+                placeholder="Mesaj yaz..."
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+              <button onClick={() => chatFileRef.current?.click()}
+                className="flex items-center gap-1 text-xs text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                📎 Dosya ekle {msgFiles.length > 0 && `(${msgFiles.length})`}
+              </button>
+              <input ref={chatFileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.xlsx,.zip,.txt"
+                className="hidden"
+                onChange={e => { setMsgFiles(p => [...p, ...Array.from(e.target.files ?? [])].slice(0, 5)); e.target.value = ""; }} />
+            </div>
+            <button onClick={sendMessage} disabled={sending || (!msgBody.trim() && msgFiles.length === 0)}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all disabled:opacity-40 self-start">
+              {sending ? "..." : "Gönder"}
             </button>
           </div>
         </div>

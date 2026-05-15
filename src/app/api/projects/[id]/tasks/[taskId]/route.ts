@@ -12,10 +12,11 @@ async function syncStepStatus(stepId: number, projectId: number, logUserId: numb
   await prisma.projectStep.update({ where: { id: stepId }, data: { status: newStatus } });
 
   const allSteps = await prisma.projectStep.findMany({ where: { projectId } });
-  const projDone = allSteps.every(s => s.status === "Tamamlandı");
+  const projDone = allSteps.length > 0 && allSteps.every(s => s.status === "Tamamlandı");
+  const anyStepInProgress = allSteps.some(s => s.status === "Devam Ediyor");
   await prisma.project.update({
     where: { id: projectId },
-    data: { status: projDone ? "Tamamlandı" : "Devam Ediyor" },
+    data: { status: projDone ? "Tamamlandı" : anyStepInProgress ? "Devam Ediyor" : "Beklemede" },
   });
 
   if (allDone) {

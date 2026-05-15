@@ -122,9 +122,10 @@ function WaitingBanner({ info }: { info: WaitingInfo | null }) {
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, onRefresh }: { project: Project; onRefresh: () => void }) {
   const [open, setOpen] = useState(false);
   const [steps, setSteps] = useState<ProjStep[]>(project.steps);
+  const [projStatus, setProjStatus] = useState(project.status);
   const [messages, setMessages] = useState<ProjMessage[]>([]);
   const [msgBody, setMsgBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -138,21 +139,26 @@ function ProjectCard({ project }: { project: Project }) {
     if (r.ok) setMessages(await r.json());
   }, [project.id]);
 
-  const reloadSteps = useCallback(async () => {
+  const reloadProject = useCallback(async () => {
     const r = await fetch(`/api/projects/${project.id}`);
-    if (r.ok) { const d = await r.json(); setSteps(d.steps ?? []); }
-  }, [project.id]);
+    if (r.ok) {
+      const d = await r.json();
+      setSteps(d.steps ?? []);
+      setProjStatus(d.status ?? project.status);
+    }
+  }, [project.id, project.status]);
 
-  useEffect(() => { if (open) { loadMessages(); reloadSteps(); } }, [open, loadMessages, reloadSteps]);
+  useEffect(() => { if (open) { loadMessages(); reloadProject(); } }, [open, loadMessages, reloadProject]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const toggleTask = async (taskId: number, currentStatus: string) => {
-    const next = currentStatus === "Tamamlandı" ? "Beklemede" : currentStatus === "Beklemede" ? "Devam Ediyor" : "Tamamlandı";
+    const next = currentStatus === "Tamamlandı" ? "Beklemede" : "Tamamlandı";
     await fetch(`/api/projects/${project.id}/tasks/${taskId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: next }),
     });
-    reloadSteps();
+    await reloadProject();
+    onRefresh();
   };
 
   const sendMsg = async () => {
@@ -176,7 +182,7 @@ function ProjectCard({ project }: { project: Project }) {
   };
 
   const progress = calcProgress(steps);
-  const waiting = project.status !== "Tamamlandı" && project.status !== "İptal" ? getWaiting(steps) : null;
+  const waiting = projStatus !== "Tamamlandı" && projStatus !== "İptal" ? getWaiting(steps) : null;
   const allTasks = steps.flatMap(s => s.tasks);
   const doneTasks = allTasks.filter(t => t.status === "Tamamlandı").length;
   const doneSteps = steps.filter(s => s.status === "Tamamlandı").length;
@@ -567,6 +573,11 @@ export default function PortalPage() {
   const [filter, setFilter]     = useState("Tümü");
   const [openTicketId, setOpenTicketId] = useState<number | null>(null);
 
+  const refreshProjects = useCallback(async () => {
+    const r = await fetch("/api/projects");
+    if (r.ok) setProjects(await r.json());
+  }, []);
+
   const fetchAll = useCallback(async () => {
     const [meRes, tRes, pRes] = await Promise.all([
       fetch("/api/auth/me").then(r => r.ok ? r.json() : null),
@@ -759,7 +770,7 @@ export default function PortalPage() {
               })()}
               {/* Cards */}
               <div className="space-y-3">
-                {projects.map(p => <ProjectCard key={p.id} project={p} />)}
+                {projects.map(p => <ProjectCard key={p.id} project={p} onRefresh={refreshProjects} />)}
               </div>
             </>)}
           </div>

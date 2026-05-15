@@ -6,7 +6,7 @@ async function syncProjectStatus(projectId: number) {
   const steps = await prisma.projectStep.findMany({ where: { projectId } });
   const allDone = steps.length > 0 && steps.every(s => s.status === "Tamamlandı");
   const anyInProgress = steps.some(s => s.status === "Devam Ediyor");
-  const newStatus = allDone ? "Tamamlandı" : anyInProgress ? "Devam Ediyor" : "Devam Ediyor";
+  const newStatus = allDone ? "Tamamlandı" : anyInProgress ? "Devam Ediyor" : "Beklemede";
   await prisma.project.update({ where: { id: projectId }, data: { status: newStatus } });
 }
 
