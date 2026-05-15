@@ -56,16 +56,31 @@ interface WaitingInfo { step: string; who: WhoWaiting; label: string; }
 
 function getWaiting(steps: ProjStep[]): WaitingInfo | null {
   if (!steps.length) return null;
-  const active = steps.find(s => s.status === "Devam Ediyor") ?? steps.find(s => s.status === "Beklemede");
+  // Önce aktif adımı bul, yoksa sıradaki bekleyen adımı
+  const inProgress = steps.find(s => s.status === "Devam Ediyor");
+  const next       = steps.find(s => s.status === "Beklemede");
+  const active     = inProgress ?? next;
   if (!active) return null;
+
   const pending = active.tasks.filter(t => t.status !== "Tamamlandı");
-  if (!pending.length) return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
-  const custP = pending.filter(t => t.assigneeType === "customer");
-  const teamP = pending.filter(t => t.assigneeType === "user");
-  if (custP.length && !teamP.length) return { step: active.name, who: "customer", label: "Sizin onayınız bekleniyor" };
-  if (teamP.length && !custP.length) return { step: active.name, who: "team", label: "Ekip çalışıyor" };
-  if (custP.length && teamP.length) return { step: active.name, who: "both", label: "Müşteri + Ekip çalışıyor" };
-  return { step: active.name, who: "pending", label: "Başlanmadı" };
+  const custP   = pending.filter(t => t.assigneeType === "customer");
+  const teamP   = pending.filter(t => t.assigneeType === "user");
+
+  // Müşteri görevi varsa her zaman göster (başlanmamış adımda bile)
+  if (custP.length > 0 && teamP.length === 0)
+    return { step: active.name, who: "customer", label: "Sizin onayınız bekleniyor" };
+  if (custP.length > 0 && teamP.length > 0)
+    return { step: active.name, who: "both", label: "Sizin onayınız bekleniyor" };
+
+  // Ekip görevi: SADECE adım "Devam Ediyor" ise göster
+  if (teamP.length > 0 && active.status === "Devam Ediyor")
+    return { step: active.name, who: "team", label: "Ekip çalışıyor" };
+
+  // Adım başlamadı ya da atanmamış görevler
+  if (!pending.length && active.status === "Devam Ediyor")
+    return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
+
+  return null; // Beklemede + sadece ekip görevi → henüz başlanmadı, banner gösterme
 }
 
 function ProjAttachView({ att }: { att: ProjAttachment }) {
@@ -721,7 +736,7 @@ export default function PortalPage() {
                 const done   = projects.filter(p => p.status === "Tamamlandı").length;
                 const waitMe = projects.filter(p => {
                   const w = getWaiting(p.steps);
-                  return w?.who === "customer";
+                  return w?.who === "customer" || w?.who === "both";
                 }).length;
                 return (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -22,20 +22,25 @@ interface WaitingInfo { step: string; who: WhoWaiting; label: string; }
 
 function getWaiting(steps: Step[], members: Member[] = []): WaitingInfo | null {
   if (!steps.length) return null;
-  const active = steps.find(s => s.status === "Devam Ediyor") ?? steps.find(s => s.status === "Beklemede");
+  const inProgress = steps.find(s => s.status === "Devam Ediyor");
+  const next       = steps.find(s => s.status === "Beklemede");
+  const active     = inProgress ?? next;
   if (!active) return null;
   const pending = active.tasks.filter(t => t.status !== "Tamamlandı");
-  if (!pending.length) return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
   const custP = pending.filter(t => t.assigneeType === "customer");
   const teamP = pending.filter(t => t.assigneeType === "user");
-  if (custP.length && !teamP.length) return { step: active.name, who: "customer", label: "Müşteri onayı bekleniyor" };
-  if (teamP.length && !custP.length) {
+  if (custP.length > 0 && teamP.length === 0)
+    return { step: active.name, who: "customer", label: "Müşteri onayı bekleniyor" };
+  if (custP.length > 0 && teamP.length > 0)
+    return { step: active.name, who: "both", label: "Müşteri onayı bekleniyor" };
+  if (teamP.length > 0 && active.status === "Devam Ediyor") {
     const names = [...new Set(teamP.filter(t => t.assigneeId).map(t => members.find(m => m.user.id === t.assigneeId)?.user.name ?? "Ekip"))];
     const label = names.length ? (names.length <= 2 ? names.join(", ") : `${names[0]} +${names.length - 1}`) : "Ekip çalışıyor";
     return { step: active.name, who: "team", label };
   }
-  if (custP.length && teamP.length) return { step: active.name, who: "both", label: "Müşteri + Ekip" };
-  return { step: active.name, who: "pending", label: "Başlanmadı" };
+  if (!pending.length && active.status === "Devam Ediyor")
+    return { step: active.name, who: "syncing", label: "Adım tamamlanıyor" };
+  return null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
