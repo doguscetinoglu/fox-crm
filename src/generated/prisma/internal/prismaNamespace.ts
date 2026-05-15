@@ -1326,6 +1326,7 @@ export const ProjectMessageScalarFieldEnum = {
   userName: 'userName',
   userType: 'userType',
   body: 'body',
+  attachments: 'attachments',
   createdAt: 'createdAt'
 } as const
 

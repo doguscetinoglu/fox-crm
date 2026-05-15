@@ -45,6 +45,7 @@ export type ProjectMessageMinAggregateOutputType = {
   userName: string | null
   userType: string | null
   body: string | null
+  attachments: string | null
   createdAt: Date | null
 }
 
@@ -55,6 +56,7 @@ export type ProjectMessageMaxAggregateOutputType = {
   userName: string | null
   userType: string | null
   body: string | null
+  attachments: string | null
   createdAt: Date | null
 }
 
@@ -65,6 +67,7 @@ export type ProjectMessageCountAggregateOutputType = {
   userName: number
   userType: number
   body: number
+  attachments: number
   createdAt: number
   _all: number
 }
@@ -89,6 +92,7 @@ export type ProjectMessageMinAggregateInputType = {
   userName?: true
   userType?: true
   body?: true
+  attachments?: true
   createdAt?: true
 }
 
@@ -99,6 +103,7 @@ export type ProjectMessageMaxAggregateInputType = {
   userName?: true
   userType?: true
   body?: true
+  attachments?: true
   createdAt?: true
 }
 
@@ -109,6 +114,7 @@ export type ProjectMessageCountAggregateInputType = {
   userName?: true
   userType?: true
   body?: true
+  attachments?: true
   createdAt?: true
   _all?: true
 }
@@ -206,6 +212,7 @@ export type ProjectMessageGroupByOutputType = {
   userName: string | null
   userType: string
   body: string
+  attachments: string | null
   createdAt: Date
   _count: ProjectMessageCountAggregateOutputType | null
   _avg: ProjectMessageAvgAggregateOutputType | null
@@ -239,6 +246,7 @@ export type ProjectMessageWhereInput = {
   userName?: Prisma.StringNullableFilter<"ProjectMessage"> | string | null
   userType?: Prisma.StringFilter<"ProjectMessage"> | string
   body?: Prisma.StringFilter<"ProjectMessage"> | string
+  attachments?: Prisma.StringNullableFilter<"ProjectMessage"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ProjectMessage"> | Date | string
   project?: Prisma.XOR<Prisma.ProjectScalarRelationFilter, Prisma.ProjectWhereInput>
 }
@@ -250,6 +258,7 @@ export type ProjectMessageOrderByWithRelationInput = {
   userName?: Prisma.SortOrderInput | Prisma.SortOrder
   userType?: Prisma.SortOrder
   body?: Prisma.SortOrder
+  attachments?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   project?: Prisma.ProjectOrderByWithRelationInput
 }
@@ -264,6 +273,7 @@ export type ProjectMessageWhereUniqueInput = Prisma.AtLeast<{
   userName?: Prisma.StringNullableFilter<"ProjectMessage"> | string | null
   userType?: Prisma.StringFilter<"ProjectMessage"> | string
   body?: Prisma.StringFilter<"ProjectMessage"> | string
+  attachments?: Prisma.StringNullableFilter<"ProjectMessage"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ProjectMessage"> | Date | string
   project?: Prisma.XOR<Prisma.ProjectScalarRelationFilter, Prisma.ProjectWhereInput>
 }, "id">
@@ -275,6 +285,7 @@ export type ProjectMessageOrderByWithAggregationInput = {
   userName?: Prisma.SortOrderInput | Prisma.SortOrder
   userType?: Prisma.SortOrder
   body?: Prisma.SortOrder
+  attachments?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.ProjectMessageCountOrderByAggregateInput
   _avg?: Prisma.ProjectMessageAvgOrderByAggregateInput
@@ -293,6 +304,7 @@ export type ProjectMessageScalarWhereWithAggregatesInput = {
   userName?: Prisma.StringNullableWithAggregatesFilter<"ProjectMessage"> | string | null
   userType?: Prisma.StringWithAggregatesFilter<"ProjectMessage"> | string
   body?: Prisma.StringWithAggregatesFilter<"ProjectMessage"> | string
+  attachments?: Prisma.StringNullableWithAggregatesFilter<"ProjectMessage"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ProjectMessage"> | Date | string
 }
 
@@ -301,6 +313,7 @@ export type ProjectMessageCreateInput = {
   userName?: string | null
   userType?: string
   body: string
+  attachments?: string | null
   createdAt?: Date | string
   project: Prisma.ProjectCreateNestedOneWithoutMessagesInput
 }
@@ -312,6 +325,7 @@ export type ProjectMessageUncheckedCreateInput = {
   userName?: string | null
   userType?: string
   body: string
+  attachments?: string | null
   createdAt?: Date | string
 }
 
@@ -320,6 +334,7 @@ export type ProjectMessageUpdateInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   project?: Prisma.ProjectUpdateOneRequiredWithoutMessagesNestedInput
 }
@@ -331,6 +346,7 @@ export type ProjectMessageUncheckedUpdateInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -341,6 +357,7 @@ export type ProjectMessageCreateManyInput = {
   userName?: string | null
   userType?: string
   body: string
+  attachments?: string | null
   createdAt?: Date | string
 }
 
@@ -349,6 +366,7 @@ export type ProjectMessageUpdateManyMutationInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -359,6 +377,7 @@ export type ProjectMessageUncheckedUpdateManyInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -379,6 +398,7 @@ export type ProjectMessageCountOrderByAggregateInput = {
   userName?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   body?: Prisma.SortOrder
+  attachments?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -395,6 +415,7 @@ export type ProjectMessageMaxOrderByAggregateInput = {
   userName?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   body?: Prisma.SortOrder
+  attachments?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -405,6 +426,7 @@ export type ProjectMessageMinOrderByAggregateInput = {
   userName?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   body?: Prisma.SortOrder
+  attachments?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -461,6 +483,7 @@ export type ProjectMessageCreateWithoutProjectInput = {
   userName?: string | null
   userType?: string
   body: string
+  attachments?: string | null
   createdAt?: Date | string
 }
 
@@ -470,6 +493,7 @@ export type ProjectMessageUncheckedCreateWithoutProjectInput = {
   userName?: string | null
   userType?: string
   body: string
+  attachments?: string | null
   createdAt?: Date | string
 }
 
@@ -509,6 +533,7 @@ export type ProjectMessageScalarWhereInput = {
   userName?: Prisma.StringNullableFilter<"ProjectMessage"> | string | null
   userType?: Prisma.StringFilter<"ProjectMessage"> | string
   body?: Prisma.StringFilter<"ProjectMessage"> | string
+  attachments?: Prisma.StringNullableFilter<"ProjectMessage"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ProjectMessage"> | Date | string
 }
 
@@ -518,6 +543,7 @@ export type ProjectMessageCreateManyProjectInput = {
   userName?: string | null
   userType?: string
   body: string
+  attachments?: string | null
   createdAt?: Date | string
 }
 
@@ -526,6 +552,7 @@ export type ProjectMessageUpdateWithoutProjectInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -535,6 +562,7 @@ export type ProjectMessageUncheckedUpdateWithoutProjectInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -544,6 +572,7 @@ export type ProjectMessageUncheckedUpdateManyWithoutProjectInput = {
   userName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.StringFieldUpdateOperationsInput | string
+  attachments?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -556,6 +585,7 @@ export type ProjectMessageSelect<ExtArgs extends runtime.Types.Extensions.Intern
   userName?: boolean
   userType?: boolean
   body?: boolean
+  attachments?: boolean
   createdAt?: boolean
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["projectMessage"]>
@@ -567,6 +597,7 @@ export type ProjectMessageSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   userName?: boolean
   userType?: boolean
   body?: boolean
+  attachments?: boolean
   createdAt?: boolean
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["projectMessage"]>
@@ -578,6 +609,7 @@ export type ProjectMessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   userName?: boolean
   userType?: boolean
   body?: boolean
+  attachments?: boolean
   createdAt?: boolean
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["projectMessage"]>
@@ -589,10 +621,11 @@ export type ProjectMessageSelectScalar = {
   userName?: boolean
   userType?: boolean
   body?: boolean
+  attachments?: boolean
   createdAt?: boolean
 }
 
-export type ProjectMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "userId" | "userName" | "userType" | "body" | "createdAt", ExtArgs["result"]["projectMessage"]>
+export type ProjectMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "projectId" | "userId" | "userName" | "userType" | "body" | "attachments" | "createdAt", ExtArgs["result"]["projectMessage"]>
 export type ProjectMessageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   project?: boolean | Prisma.ProjectDefaultArgs<ExtArgs>
 }
@@ -615,6 +648,7 @@ export type $ProjectMessagePayload<ExtArgs extends runtime.Types.Extensions.Inte
     userName: string | null
     userType: string
     body: string
+    attachments: string | null
     createdAt: Date
   }, ExtArgs["result"]["projectMessage"]>
   composites: {}
@@ -1046,6 +1080,7 @@ export interface ProjectMessageFieldRefs {
   readonly userName: Prisma.FieldRef<"ProjectMessage", 'String'>
   readonly userType: Prisma.FieldRef<"ProjectMessage", 'String'>
   readonly body: Prisma.FieldRef<"ProjectMessage", 'String'>
+  readonly attachments: Prisma.FieldRef<"ProjectMessage", 'String'>
   readonly createdAt: Prisma.FieldRef<"ProjectMessage", 'DateTime'>
 }
     

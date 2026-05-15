@@ -18,14 +18,15 @@ interface Ticket {
   assignee: { name: string; color: string } | null;
 }
 
-interface ProjTask { id: number; status: string; }
+interface ProjTask { id: number; title: string; status: string; assigneeId: number | null; assigneeType: string | null; }
 interface ProjStep { id: number; name: string; status: string; tasks: ProjTask[]; }
 interface Project {
   id: number; name: string; description: string | null; status: string; createdAt: string;
   members: { user: { name: string; color: string } }[];
   steps: ProjStep[];
 }
-interface ProjMessage { id: number; userName: string | null; userType: string; body: string; createdAt: string; }
+interface ProjAttachment { url: string; name: string; size: number; type: string; }
+interface ProjMessage { id: number; userName: string | null; userType: string; body: string; attachments: string; createdAt: string; }
 
 const PROJ_STATUS: Record<string, string> = {
   "Devam Ediyor": "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
@@ -43,39 +44,77 @@ function calcProgress(steps: ProjStep[]) {
   return Math.round((all.filter(t => t.status === "Tamamlandı").length / all.length) * 100);
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjAttachView({ att }: { att: ProjAttachment }) {
+  if (att.type.startsWith("image/")) {
+    return (
+      <a href={att.url} target="_blank" rel="noopener noreferrer" className="block mt-1.5">
+        <img src={att.url} alt={att.name} className="max-h-40 max-w-full rounded-xl border border-black/10 object-contain" />
+      </a>
+    );
+  }
+  return (
+    <a href={att.url} target="_blank" rel="noopener noreferrer"
+      className="flex items-center gap-1.5 mt-1.5 text-xs bg-black/10 hover:bg-black/20 rounded-lg px-2.5 py-1.5 transition-colors">
+      <span>📄</span>
+      <span className="truncate max-w-[160px]">{att.name}</span>
+    </a>
+  );
+}
+
+function ProjectCard({ project, meId }: { project: Project; meId: number }) {
   const [open, setOpen] = useState(false);
+  const [steps, setSteps] = useState<ProjStep[]>(project.steps);
   const [messages, setMessages] = useState<ProjMessage[]>([]);
   const [msgBody, setMsgBody] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [chatTab, setChatTab] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const loadMessages = useCallback(async () => {
     const r = await fetch(`/api/projects/${project.id}/messages`);
     if (r.ok) setMessages(await r.json());
   }, [project.id]);
 
-  useEffect(() => {
-    if (open) loadMessages();
-  }, [open, loadMessages]);
+  const reloadSteps = useCallback(async () => {
+    const r = await fetch(`/api/projects/${project.id}`);
+    if (r.ok) { const d = await r.json(); setSteps(d.steps ?? []); }
+  }, [project.id]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  useEffect(() => { if (open) { loadMessages(); reloadSteps(); } }, [open, loadMessages, reloadSteps]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const toggleTask = async (taskId: number, currentStatus: string) => {
+    const next = currentStatus === "Tamamlandı" ? "Beklemede" : currentStatus === "Beklemede" ? "Devam Ediyor" : "Tamamlandı";
+    await fetch(`/api/projects/${project.id}/tasks/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+    reloadSteps();
+  };
 
   const sendMsg = async () => {
-    if (!msgBody.trim()) return;
+    if (!msgBody.trim() && files.length === 0) return;
     setSending(true);
+
+    const uploaded: ProjAttachment[] = [];
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) uploaded.push(await res.json());
+    }
+
     await fetch(`/api/projects/${project.id}/messages`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: msgBody }),
+      body: JSON.stringify({ body: msgBody.trim(), attachments: uploaded }),
     });
-    setMsgBody(""); setSending(false);
+    setMsgBody(""); setFiles([]); setSending(false);
     loadMessages();
   };
 
-  const progress = calcProgress(project.steps);
+  const progress = calcProgress(steps);
 
   return (
     <div className={`bg-white dark:bg-gray-900 border rounded-2xl shadow-sm dark:shadow-none transition-all ${open ? "border-indigo-300 dark:border-indigo-600/40" : "border-slate-200 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-gray-700"}`}>
@@ -91,11 +130,9 @@ function ProjectCard({ project }: { project: Project }) {
             <span className={`text-slate-400 dark:text-gray-600 text-xs transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
           </div>
         </div>
-
-        {/* Progress */}
         <div>
           <div className="flex justify-between text-xs text-slate-400 dark:text-gray-600 mb-1">
-            <span>{project.steps.length} adım</span>
+            <span>{steps.length} adım</span>
             <span className="font-semibold text-slate-600 dark:text-gray-400">{progress}%</span>
           </div>
           <div className="h-1.5 bg-slate-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -107,40 +144,65 @@ function ProjectCard({ project }: { project: Project }) {
       {/* Expanded */}
       {open && (
         <div className="border-t border-slate-100 dark:border-gray-800" onClick={e => e.stopPropagation()}>
-          {/* Inner tabs */}
           <div className="flex border-b border-slate-100 dark:border-gray-800">
             <button onClick={() => setChatTab(false)}
               className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${!chatTab ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500" : "text-slate-400 dark:text-gray-600 hover:text-slate-600"}`}>
-              Adımlar
+              Adımlar & Görevler
             </button>
-            <button onClick={() => setChatTab(true)}
+            <button onClick={() => { setChatTab(true); loadMessages(); }}
               className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${chatTab ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500" : "text-slate-400 dark:text-gray-600 hover:text-slate-600"}`}>
               Sohbet
             </button>
           </div>
 
-          {/* Steps view */}
+          {/* Steps + Tasks view */}
           {!chatTab && (
             <div className="divide-y divide-slate-50 dark:divide-gray-800/60">
-              {project.steps.length === 0 && (
+              {steps.length === 0 && (
                 <p className="py-8 text-center text-sm text-slate-400 dark:text-gray-600">Henüz adım eklenmedi</p>
               )}
-              {project.steps.map((step, i) => {
+              {steps.map((step, i) => {
                 const doneT = step.tasks.filter(t => t.status === "Tamamlandı").length;
+                const myTasks = step.tasks.filter(t => t.assigneeType === "customer" && t.assigneeId === meId);
+                const otherTasks = step.tasks.filter(t => !(t.assigneeType === "customer" && t.assigneeId === meId));
+
                 return (
-                  <div key={step.id} className="flex items-center gap-3 px-5 py-3">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.status === "Tamamlandı" ? "bg-emerald-500 text-white" : step.status === "Devam Ediyor" ? "bg-blue-500 text-white" : "bg-slate-100 dark:bg-gray-800 text-slate-400"}`}>
-                      {step.status === "Tamamlandı" ? "✓" : i + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 dark:text-gray-300">{step.name}</p>
+                  <div key={step.id}>
+                    {/* Step row */}
+                    <div className="flex items-center gap-3 px-5 py-3 bg-slate-50/60 dark:bg-gray-800/30">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.status === "Tamamlandı" ? "bg-emerald-500 text-white" : step.status === "Devam Ediyor" ? "bg-blue-500 text-white" : "bg-slate-200 dark:bg-gray-700 text-slate-500"}`}>
+                        {step.status === "Tamamlandı" ? "✓" : i + 1}
+                      </div>
+                      <p className="flex-1 text-sm font-semibold text-slate-700 dark:text-gray-200">{step.name}</p>
                       {step.tasks.length > 0 && (
-                        <p className="text-xs text-slate-400 dark:text-gray-600">{doneT}/{step.tasks.length} görev</p>
+                        <span className="text-xs text-slate-400 dark:text-gray-600">{doneT}/{step.tasks.length}</span>
                       )}
                     </div>
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${step.status === "Tamamlandı" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : step.status === "Devam Ediyor" ? "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-gray-800 text-slate-400"}`}>
-                      {step.status}
-                    </span>
+
+                    {/* My tasks (interactive) */}
+                    {myTasks.map(task => (
+                      <div key={task.id} className="flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-colors">
+                        <button
+                          onClick={() => toggleTask(task.id, task.status)}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all cursor-pointer ${task.status === "Tamamlandı" ? "bg-emerald-500 border-emerald-500 text-white" : task.status === "Devam Ediyor" ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10" : "border-slate-300 dark:border-gray-600 hover:border-indigo-400"}`}>
+                          {task.status === "Tamamlandı" && <span className="text-[10px]">✓</span>}
+                          {task.status === "Devam Ediyor" && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+                        </button>
+                        <p className={`text-sm flex-1 ${task.status === "Tamamlandı" ? "line-through text-slate-400 dark:text-gray-600" : "text-slate-700 dark:text-gray-300"}`}>{task.title}</p>
+                        <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded-md">Benim görevim</span>
+                      </div>
+                    ))}
+
+                    {/* Other tasks (read-only) */}
+                    {otherTasks.map(task => (
+                      <div key={task.id} className="flex items-center gap-3 px-6 py-2.5">
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 opacity-50 ${task.status === "Tamamlandı" ? "bg-emerald-500 border-emerald-500 text-white" : task.status === "Devam Ediyor" ? "border-blue-400 bg-blue-50 dark:bg-blue-500/10" : "border-slate-300 dark:border-gray-600"}`}>
+                          {task.status === "Tamamlandı" && <span className="text-[10px]">✓</span>}
+                          {task.status === "Devam Ediyor" && <span className="w-2 h-2 rounded-full bg-blue-400" />}
+                        </div>
+                        <p className={`text-sm flex-1 ${task.status === "Tamamlandı" ? "line-through text-slate-400 dark:text-gray-600" : "text-slate-500 dark:text-gray-500"}`}>{task.title}</p>
+                      </div>
+                    ))}
                   </div>
                 );
               })}
@@ -149,13 +211,14 @@ function ProjectCard({ project }: { project: Project }) {
 
           {/* Chat view */}
           {chatTab && (
-            <div className="flex flex-col" style={{ height: "320px" }}>
+            <div className="flex flex-col" style={{ height: "360px" }}>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 && (
                   <div className="flex items-center justify-center h-full text-slate-400 dark:text-gray-600 text-sm">Henüz mesaj yok</div>
                 )}
                 {messages.map(msg => {
                   const isTeam = msg.userType !== "customer";
+                  const atts: ProjAttachment[] = (() => { try { return JSON.parse(msg.attachments || "[]"); } catch { return []; } })();
                   return (
                     <div key={msg.id} className={`flex gap-2 ${isTeam ? "" : "flex-row-reverse"}`}>
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${isTeam ? "bg-indigo-500" : "bg-teal-500"}`}>
@@ -163,7 +226,8 @@ function ProjectCard({ project }: { project: Project }) {
                       </div>
                       <div className={`max-w-[75%] flex flex-col gap-0.5 ${isTeam ? "" : "items-end"}`}>
                         <div className={`px-3 py-2 rounded-2xl text-sm ${isTeam ? "bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-gray-200 rounded-tl-sm" : "bg-indigo-600 text-white rounded-tr-sm"}`}>
-                          {msg.body}
+                          {msg.body && <p className="whitespace-pre-wrap">{msg.body}</p>}
+                          {atts.map((a, ai) => <ProjAttachView key={ai} att={a} />)}
                         </div>
                         <p className="text-[10px] text-slate-400 dark:text-gray-600 px-1">
                           {msg.userName ?? "?"} · {new Date(msg.createdAt).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
@@ -174,14 +238,48 @@ function ProjectCard({ project }: { project: Project }) {
                 })}
                 <div ref={bottomRef} />
               </div>
+
+              {/* File previews */}
+              {files.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-3 pt-2">
+                  {files.map((f, i) => (
+                    <div key={i} className="relative group">
+                      {f.type.startsWith("image/") ? (
+                        <img src={URL.createObjectURL(f)} alt={f.name} className="h-12 w-12 object-cover rounded-lg border border-slate-200 dark:border-gray-700" />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-0.5 px-1">
+                          <span className="text-lg">📄</span>
+                          <span className="text-[8px] text-slate-400 text-center leading-tight line-clamp-2">{f.name}</span>
+                        </div>
+                      )}
+                      <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="p-3 border-t border-slate-100 dark:border-gray-800 flex gap-2 shrink-0">
-                <input value={msgBody} onChange={e => setMsgBody(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && sendMsg()}
-                  placeholder="Mesaj yaz..."
-                  className="flex-1 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
-                <button onClick={sendMsg} disabled={sending || !msgBody.trim()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl disabled:opacity-40 transition-all">
-                  Gönder
+                <div className="flex-1 space-y-1">
+                  <input value={msgBody} onChange={e => setMsgBody(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && sendMsg()}
+                    placeholder="Mesaj yaz..."
+                    className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                  <button onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-1 text-xs text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    📎 Dosya/Fotoğraf ekle {files.length > 0 && `(${files.length})`}
+                  </button>
+                  <input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.xlsx,.zip,.txt"
+                    className="hidden"
+                    onChange={e => {
+                      const picked = Array.from(e.target.files ?? []);
+                      setFiles(prev => [...prev, ...picked].slice(0, 5));
+                      e.target.value = "";
+                    }} />
+                </div>
+                <button onClick={sendMsg} disabled={sending || (!msgBody.trim() && files.length === 0)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl disabled:opacity-40 transition-all self-start">
+                  {sending ? "..." : "Gönder"}
                 </button>
               </div>
             </div>
@@ -526,7 +624,7 @@ export default function PortalPage() {
                 <p className="font-semibold text-slate-700 dark:text-gray-400">Henüz proje yok</p>
                 <p className="text-sm text-slate-400 dark:text-gray-600 mt-1">Size atanan projeler burada görünecek</p>
               </div>
-            ) : projects.map(p => <ProjectCard key={p.id} project={p} />)}
+            ) : projects.map(p => <ProjectCard key={p.id} project={p} meId={me?.id ?? 0} />)}
           </div>
         )}
       </div>

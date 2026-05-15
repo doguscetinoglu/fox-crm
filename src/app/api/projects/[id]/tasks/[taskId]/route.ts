@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-async function syncStepStatus(stepId: number, projectId: number, session: { id: number; name: string }) {
+async function syncStepStatus(stepId: number, projectId: number, logUserId: number | null, logUserName: string) {
   const tasks = await prisma.projectTask.findMany({ where: { stepId } });
   if (tasks.length === 0) return;
   const allDone = tasks.every(t => t.status === "Tamamlandı");
@@ -11,7 +11,6 @@ async function syncStepStatus(stepId: number, projectId: number, session: { id: 
 
   await prisma.projectStep.update({ where: { id: stepId }, data: { status: newStatus } });
 
-  // Proje durumunu da senkronize et
   const allSteps = await prisma.projectStep.findMany({ where: { projectId } });
   const projDone = allSteps.every(s => s.status === "Tamamlandı");
   await prisma.project.update({
@@ -22,7 +21,7 @@ async function syncStepStatus(stepId: number, projectId: number, session: { id: 
   if (allDone) {
     const step = await prisma.projectStep.findUnique({ where: { id: stepId } });
     await prisma.projectLog.create({
-      data: { projectId, userId: session.id, userName: session.name, action: `Adım tamamlandı: ${step?.name}` },
+      data: { projectId, userId: logUserId, userName: logUserName, action: `Adım tamamlandı: ${step?.name}` },
     });
   }
 }
@@ -33,6 +32,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id, taskId } = await params;
   const projectId = parseInt(id);
   const body = await req.json();
+
+  // Müşteri: sadece kendisine atanan görevi ve sadece status değiştirebilir
+  if (session.type === "customer") {
+    const existing = await prisma.projectTask.findUnique({ where: { id: parseInt(taskId) } });
+    if (!existing || existing.assigneeType !== "customer" || existing.assigneeId !== session.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!body.status) return NextResponse.json({ error: "Sadece durum güncellenebilir" }, { status: 400 });
+
+    const task = await prisma.projectTask.update({
+      where: { id: parseInt(taskId) },
+      data: { status: body.status, completedAt: body.status === "Tamamlandı" ? new Date() : null },
+    });
+    await prisma.projectLog.create({
+      data: { projectId, userId: null, userName: session.name, action: `Görev "${task.title}": ${body.status}` },
+    });
+    await syncStepStatus(task.stepId, projectId, null, session.name);
+    return NextResponse.json(task);
+  }
 
   const task = await prisma.projectTask.update({
     where: { id: parseInt(taskId) },
@@ -53,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await prisma.projectLog.create({
       data: { projectId, userId: session.id, userName: session.name, action: `Görev "${task.title}": ${body.status}` },
     });
-    await syncStepStatus(task.stepId, projectId, session as { id: number; name: string });
+    await syncStepStatus(task.stepId, projectId, session.id, session.name);
   }
 
   return NextResponse.json(task);

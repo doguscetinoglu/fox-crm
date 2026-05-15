@@ -148,14 +148,15 @@ model ProjectLog {
 }
 
 model ProjectMessage {
-  id        Int      @id @default(autoincrement())
-  projectId Int
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId    Int?
-  userName  String?
-  userType  String   @default("user")
-  body      String
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      Int?
+  userName    String?
+  userType    String   @default("user")
+  body        String
+  attachments String?  @default("[]")
+  createdAt   DateTime @default(now())
 
   @@map("project_messages")
 }

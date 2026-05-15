@@ -14,7 +14,8 @@ interface Project {
   customer: Customer | null; members: Member[]; steps: Step[];
 }
 interface Log { id: number; userName: string | null; action: string; createdAt: string; }
-interface Message { id: number; userName: string | null; userType: string; body: string; createdAt: string; }
+interface Attachment { url: string; name: string; size: number; type: string; }
+interface Message { id: number; userName: string | null; userType: string; body: string; attachments: string; createdAt: string; }
 
 const STATUS_COLORS: Record<string, string> = {
   "Beklemede":   "bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400",
@@ -394,6 +395,7 @@ export default function ProjeDetayPage() {
             )}
             {messages.map(msg => {
               const isCustomer = msg.userType === "customer";
+              const atts: Attachment[] = (() => { try { return JSON.parse(msg.attachments || "[]"); } catch { return []; } })();
               return (
                 <div key={msg.id} className={`flex gap-3 ${isCustomer ? "" : "flex-row-reverse"}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${isCustomer ? "bg-teal-500" : "bg-indigo-500"}`}>
@@ -401,7 +403,19 @@ export default function ProjeDetayPage() {
                   </div>
                   <div className={`max-w-[70%] ${isCustomer ? "" : "items-end"} flex flex-col gap-0.5`}>
                     <div className={`px-3 py-2 rounded-2xl text-sm ${isCustomer ? "bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-gray-200 rounded-tl-sm" : "bg-indigo-600 text-white rounded-tr-sm"}`}>
-                      {msg.body}
+                      {msg.body && <p className="whitespace-pre-wrap">{msg.body}</p>}
+                      {atts.map((a, ai) => (
+                        a.type.startsWith("image/") ? (
+                          <a key={ai} href={a.url} target="_blank" rel="noopener noreferrer" className="block mt-1.5">
+                            <img src={a.url} alt={a.name} className="max-h-40 max-w-full rounded-xl border border-black/10 object-contain" />
+                          </a>
+                        ) : (
+                          <a key={ai} href={a.url} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 mt-1.5 text-xs bg-black/10 hover:bg-black/20 rounded-lg px-2.5 py-1.5 transition-colors">
+                            <span>📄</span><span className="truncate max-w-[160px]">{a.name}</span>
+                          </a>
+                        )
+                      ))}
                     </div>
                     <p className="text-[11px] text-slate-400 dark:text-gray-600 px-1">
                       {msg.userName ?? "?"} · {new Date(msg.createdAt).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
