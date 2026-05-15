@@ -61,7 +61,7 @@ function ProjAttachView({ att }: { att: ProjAttachment }) {
   );
 }
 
-function ProjectCard({ project, meId }: { project: Project; meId: number }) {
+function ProjectCard({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);
   const [steps, setSteps] = useState<ProjStep[]>(project.steps);
   const [messages, setMessages] = useState<ProjMessage[]>([]);
@@ -163,8 +163,8 @@ function ProjectCard({ project, meId }: { project: Project; meId: number }) {
               )}
               {steps.map((step, i) => {
                 const doneT = step.tasks.filter(t => t.status === "Tamamlandı").length;
-                const myTasks = step.tasks.filter(t => t.assigneeType === "customer" && t.assigneeId === meId);
-                const otherTasks = step.tasks.filter(t => !(t.assigneeType === "customer" && t.assigneeId === meId));
+                const myTasks = step.tasks.filter(t => t.assigneeType === "customer");
+                const otherTasks = step.tasks.filter(t => t.assigneeType !== "customer");
 
                 return (
                   <div key={step.id}>
@@ -624,7 +624,7 @@ export default function PortalPage() {
                 <p className="font-semibold text-slate-700 dark:text-gray-400">Henüz proje yok</p>
                 <p className="text-sm text-slate-400 dark:text-gray-600 mt-1">Size atanan projeler burada görünecek</p>
               </div>
-            ) : projects.map(p => <ProjectCard key={p.id} project={p} meId={me?.id ?? 0} />)}
+            ) : projects.map(p => <ProjectCard key={p.id} project={p} />)}
           </div>
         )}
       </div>

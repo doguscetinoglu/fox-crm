@@ -33,10 +33,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const projectId = parseInt(id);
   const body = await req.json();
 
-  // Müşteri: sadece kendisine atanan görevi ve sadece status değiştirebilir
+  // Müşteri: görev customer tipinde atanmış ve bu müşterinin projesine ait olmalı
   if (session.type === "customer") {
-    const existing = await prisma.projectTask.findUnique({ where: { id: parseInt(taskId) } });
-    if (!existing || existing.assigneeType !== "customer" || existing.assigneeId !== session.id) {
+    const existing = await prisma.projectTask.findUnique({
+      where: { id: parseInt(taskId) },
+      include: { step: { include: { project: { select: { customerId: true } } } } },
+    });
+    const belongsToCustomer = existing?.step.project.customerId === session.id;
+    if (!existing || existing.assigneeType !== "customer" || !belongsToCustomer) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!body.status) return NextResponse.json({ error: "Sadece durum güncellenebilir" }, { status: 400 });
