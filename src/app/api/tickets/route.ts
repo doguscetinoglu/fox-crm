@@ -9,7 +9,7 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let where: any = {};
   if (session.type === "agent") {
-    where = { OR: [{ assigneeId: session.id }, { assigneeId: null }] };
+    where = { assigneeId: session.id };
   } else if (session.type === "customer") {
     where = { customerId: session.id };
   }
