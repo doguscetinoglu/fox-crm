@@ -45,6 +45,39 @@ function extractTicketId(subject: string): number | null {
   return match ? parseInt(match[1]) : null;
 }
 
+// N8N email node hem string hem obje gönderebilir: "ali@test.com" veya {value:[{address:"ali@test.com"}]}
+function resolveEmail(raw: unknown): string | null {
+  if (!raw) return null;
+  if (typeof raw === "string") return raw.trim() || null;
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    // N8N IMAP format: { value: [{address, name}], text: "Name <email>" }
+    if (Array.isArray(obj.value) && obj.value.length > 0) {
+      const first = obj.value[0] as Record<string, unknown>;
+      if (typeof first.address === "string") return first.address;
+    }
+    if (typeof obj.text === "string") {
+      const match = obj.text.match(/<([^>]+)>/);
+      return match ? match[1] : obj.text.trim() || null;
+    }
+    if (typeof obj.address === "string") return obj.address;
+  }
+  return null;
+}
+
+function resolveName(raw: unknown): string | null {
+  if (!raw) return null;
+  if (typeof raw === "string") return raw.trim() || null;
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    if (Array.isArray(obj.value) && obj.value.length > 0) {
+      const first = obj.value[0] as Record<string, unknown>;
+      if (typeof first.name === "string") return first.name.trim() || null;
+    }
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const webhookSecret = process.env.WEBHOOK_SECRET;
@@ -55,16 +88,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { messageId, from, fromName, subject, body, inReplyTo } = await req.json();
+    const payload = await req.json();
+
+    // N8N farklı alan adları kullanabilir — normalize et
+    const from     = resolveEmail(payload.from);
+    const fromName = resolveName(payload.fromName ?? payload.from) ?? resolveName(payload.from);
+    const subject  = typeof payload.subject === "string" ? payload.subject.trim() : null;
+    // N8N: body, text veya html
+    const body     = payload.body ?? payload.text ?? payload.html ?? "";
+    const messageId  = payload.messageId ?? payload.message_id ?? null;
+    const inReplyTo  = payload.inReplyTo ?? payload.in_reply_to ?? null;
 
     if (!from || !subject) {
-      return NextResponse.json({ error: "from ve subject zorunludur" }, { status: 400 });
+      return NextResponse.json({ error: "from ve subject zorunludur", received: { from: payload.from, subject: payload.subject } }, { status: 400 });
     }
 
     // Duplicate kontrolü
     if (messageId) {
       const existing = await prisma.ticket.findFirst({
-        where: { emailMessageId: messageId },
+        where: { emailMessageId: String(messageId) },
       });
       if (existing) {
         return NextResponse.json({ success: true, duplicate: true, ticket: existing });
@@ -72,19 +114,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Ticket ID var mı kontrol et (yanıt mı, yeni ticket mi?)
-    const subjectTicketId = extractTicketId(subject ?? "");
-    const replyToTicketId = inReplyTo ? extractTicketId(inReplyTo) : null;
-    const linkedTicketId = subjectTicketId ?? replyToTicketId;
+    const subjectTicketId = extractTicketId(subject);
+    const replyToTicketId = inReplyTo ? extractTicketId(String(inReplyTo)) : null;
+    const linkedTicketId  = subjectTicketId ?? replyToTicketId;
 
     if (linkedTicketId) {
-      // Mevcut ticket'a yanıt olarak ekle
       const ticket = await prisma.ticket.findUnique({ where: { id: linkedTicketId } });
       if (ticket) {
         const reply = await prisma.ticketReply.create({
           data: {
             ticketId: ticket.id,
             userId: null,
-            body: body ?? "",
+            body: typeof body === "string" ? body : String(body),
             isInternal: false,
             attachments: "[]",
           },
@@ -94,19 +135,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Yeni ticket oluştur
-    const { category, priority } = await aiClassify(subject, body ?? "");
+    const { category, priority } = await aiClassify(subject, typeof body === "string" ? body : "");
 
     const ticket = await prisma.ticket.create({
       data: {
         subject,
-        body: body ?? "",
+        body: typeof body === "string" ? body : String(body),
         fromEmail: from,
         fromName: fromName ?? null,
         category,
         priority,
         status: "Yeni",
         source: "email",
-        emailMessageId: messageId ?? null,
+        emailMessageId: messageId ? String(messageId) : null,
       },
     });
 
@@ -120,6 +161,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, ticket }, { status: 201 });
   } catch (err) {
     console.error("Email inbound error:", err);
-    return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: "Sunucu hatası", detail: message }, { status: 500 });
   }
 }
