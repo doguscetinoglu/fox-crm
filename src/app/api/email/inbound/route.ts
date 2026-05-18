@@ -80,14 +80,6 @@ function resolveName(raw: unknown): string | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const webhookSecret = process.env.WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const incoming = req.headers.get("x-webhook-secret");
-      if (incoming !== webhookSecret) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
-
     const payload = await req.json();
 
     // N8N farklı alan adları kullanabilir — normalize et
