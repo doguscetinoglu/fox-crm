@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       subject, body: emailBody, fromEmail, fromName,
-      category: rawCategory, priority: rawPriority, assigneeId,
+      category: rawCategory, priority: rawPriority, assigneeId, customerId,
       source, telegramChatId, telegramMessageId,
     } = body;
 
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
         category,
         status: "Yeni",
         assigneeId: assigneeId ? Number(assigneeId) : null,
+        customerId: customerId ? Number(customerId) : null,
         priority,
         source: source ?? "web",
         telegramChatId: telegramChatId ? String(telegramChatId) : null,

@@ -27,11 +27,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/portal", request.url));
   }
 
-  // Agent/Admin → portal'a giremez
-  if (user.type !== "customer" && pathname.startsWith("/portal")) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
   return NextResponse.next();
 }
 

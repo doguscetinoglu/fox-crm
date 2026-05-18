@@ -598,7 +598,7 @@ export default function PortalPage() {
     await fetch("/api/tickets/webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, fromEmail: me.email, fromName: me.name, source: "portal" }),
+      body: JSON.stringify({ ...form, fromEmail: me.email, fromName: me.name, source: "portal", customerId: me.type === "customer" ? me.id : undefined }),
     });
     setSaving(false);
     setCreating(false);
