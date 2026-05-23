@@ -15,7 +15,10 @@ export async function GET(
     where: { id: Number(id) },
     include: {
       tickets: {
-        include: { assignee: { select: { name: true, color: true } } },
+        include: {
+          assignee: { select: { name: true, color: true } },
+          replies: { select: { workMinutes: true } },
+        },
         orderBy: { receivedAt: "desc" },
       },
       _count: { select: { tickets: true } },
